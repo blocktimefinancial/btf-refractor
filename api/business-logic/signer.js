@@ -309,7 +309,10 @@ class Signer {
     });
     //get all signers that can potentially sign the transaction
     this.potentialSigners = this.schema.getAllPotentialSigners();
-  }\n\n  /**\n   * Initialize Algorand-specific signer discovery (ed25519)
+  }
+
+  /**
+   * Initialize Algorand-specific signer discovery (ed25519)
    * @private
    */
   async _initAlgorandSigners() {
@@ -588,6 +591,97 @@ class Signer {
       this.setStatus("updated");
     }
     this.signaturesToProcess = [];
+  }
+
+  /**
+   * Sign this transaction using an HSM-managed key.
+   * Routes to the blockchain-specific HSM signing path via HsmSigningAdapter.
+   *
+   * @param {string} keyId - HSM key identifier
+   * @param {Object} [options={}] - Signing options
+   * @param {string} [options.tier='envelope'] - HSM tier ('direct' or 'envelope')
+   * @returns {Promise<void>}
+   */
+  async signWithHsm(keyId, options = {}) {
+    if (!keyId || typeof keyId !== "string") {
+      throw standardError(400, "keyId must be a non-empty string");
+    }
+
+    const HsmSigningAdapter = require("./hsm-signing-adapter");
+    const hsm = new HsmSigningAdapter({ tier: options.tier || "envelope" });
+
+    logger.info("Signing transaction with HSM", {
+      hash: this.hash,
+      blockchain: this.blockchain,
+      keyId,
+      tier: options.tier || "envelope",
+    });
+
+    const acceptedBefore = this.accepted.length;
+
+    if (this.blockchain === "stellar") {
+      const signedXdr = await hsm.signStellarTransaction(keyId, this.tx);
+      // Re-parse to extract the new signature
+      const signedTx = TransactionBuilder.fromXDR(
+        signedXdr,
+        this.txInfo.network,
+      );
+      // Filter out signatures that already exist
+      const newSigs = signedTx.signatures.filter((sig) => {
+        const sigBase64 = sig.signature().toString("base64");
+        return !this.txInfo.signatures.some(
+          (existing) => existing.signature === sigBase64,
+        );
+      });
+      for (const sig of newSigs) {
+        this.processSignature(sig);
+      }
+    } else if (this.blockchain === "algorand") {
+      const result = await hsm.signAlgorandTransaction(keyId, this.tx);
+      if (result && result.signedTxn) {
+        const sigObj = {
+          type: "single",
+          signature: Buffer.from(result.signedTxn).toString("base64"),
+          from: result.address || result.txId,
+        };
+        this.processSignature(sigObj);
+      }
+    } else if (this.blockchain === "solana") {
+      const messageBytes = this.txInfo.messageBytes || this.tx;
+      const result = await hsm.signSolanaTransaction(keyId, messageBytes);
+      if (result && result.signature) {
+        const sigObj = {
+          type: "ed25519",
+          signature:
+            typeof result.signature === "string"
+              ? result.signature
+              : Buffer.from(result.signature).toString("base64"),
+          from: result.publicKey,
+        };
+        this.processSignature(sigObj);
+      }
+    } else if (isEvmBlockchain(this.blockchain)) {
+      const result = await hsm.signEvmTransaction(keyId, this.tx);
+      if (result && result.v !== undefined) {
+        this.processSignature(result);
+      }
+    } else {
+      throw standardError(
+        501,
+        `HSM signing not supported for blockchain: ${this.blockchain}`,
+      );
+    }
+
+    // If we gained new accepted signatures, mark as updated
+    if (this.accepted.length > acceptedBefore && this.status !== "created") {
+      this.setStatus("updated");
+    }
+
+    logger.info("HSM signing complete", {
+      hash: this.hash,
+      blockchain: this.blockchain,
+      newSignatures: this.accepted.length - acceptedBefore,
+    });
   }
 
   async saveChanges() {

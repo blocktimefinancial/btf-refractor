@@ -11,6 +11,7 @@ const {
 } = require("../middleware/cors");
 const logger = require("../utils/logger").forComponent("monitoring");
 const { isValidBlockchain } = require("../business-logic/blockchain-registry");
+const config = require("../app.config");
 
 const router = express.Router();
 
@@ -22,6 +23,36 @@ const getLogger = (req) => {
     ? reqLogger.child({ component: "monitoring" })
     : logger;
 };
+
+/**
+ * Check HSM health if HSM is enabled.
+ * Returns { checked, healthy, details } — checked=false when HSM is disabled.
+ * @returns {Promise<Object>}
+ */
+async function checkHsmHealth() {
+  if (!config.hsm?.enabled) {
+    return { checked: false, healthy: true, details: null };
+  }
+
+  try {
+    const HsmSigningAdapter = require("../business-logic/hsm-signing-adapter");
+    const adapter = new HsmSigningAdapter({
+      tier: config.hsm.tier || "envelope",
+    });
+    const result = await adapter.healthCheck();
+    return {
+      checked: true,
+      healthy: result.status === "ok",
+      details: result,
+    };
+  } catch (err) {
+    return {
+      checked: true,
+      healthy: false,
+      details: { status: "error", error: err.message },
+    };
+  }
+}
 
 // Apply admin authentication to all write operations (POST routes)
 // Read-only endpoints (GET) remain publicly accessible for monitoring tools
@@ -50,7 +81,7 @@ router.get("/metrics", async (req, res) => {
     if (storageLayer.dataProvider.getTransactionStats) {
       // Pass blockchain filter if provided
       dbStats = await storageLayer.dataProvider.getTransactionStats(
-        blockchain ? { blockchain } : undefined
+        blockchain ? { blockchain } : undefined,
       );
     }
 
@@ -89,10 +120,16 @@ router.get("/health", async (req, res) => {
       dbHealth = await storageLayer.dataProvider.checkHealth();
     }
 
-    const isHealthy =
-      !status.paused && status.concurrency > 0 && dbHealth.connected;
+    // Check HSM health (only when HSM is enabled)
+    const hsmHealth = await checkHsmHealth();
 
-    res.status(isHealthy ? 200 : 503).json({
+    const isHealthy =
+      !status.paused &&
+      status.concurrency > 0 &&
+      dbHealth.connected &&
+      (!hsmHealth.checked || hsmHealth.healthy);
+
+    const response = {
       status: isHealthy ? "healthy" : "unhealthy",
       queue: status,
       database: {
@@ -101,12 +138,56 @@ router.get("/health", async (req, res) => {
         ...(dbHealth.error && { error: dbHealth.error }),
       },
       timestamp: new Date().toISOString(),
-    });
+    };
+
+    // Include HSM health when HSM is enabled
+    if (hsmHealth.checked) {
+      response.hsm = hsmHealth.details;
+    }
+
+    res.status(isHealthy ? 200 : 503).json(response);
   } catch (error) {
     getLogger(req).error("Health check error", { error: error.message });
     res.status(503).json({
       status: "unhealthy",
       error: error.message,
+      timestamp: new Date().toISOString(),
+    });
+  }
+});
+
+/**
+ * Dedicated HSM health check endpoint
+ * Provides detailed HSM connectivity status independent of composite health.
+ */
+router.get("/hsm/health", requireAdminAuth(), async (req, res) => {
+  try {
+    if (!config.hsm?.enabled) {
+      return res.json({
+        status: "disabled",
+        message: "HSM is not enabled in configuration",
+        timestamp: new Date().toISOString(),
+      });
+    }
+
+    const HsmSigningAdapter = require("../business-logic/hsm-signing-adapter");
+    const adapter = new HsmSigningAdapter({
+      tier: config.hsm.tier || "envelope",
+    });
+    const health = await adapter.healthCheck();
+
+    const statusCode = health.status === "ok" ? 200 : 503;
+    res.status(statusCode).json({
+      ...health,
+      hsmEnabled: true,
+      supportedBlockchains: HsmSigningAdapter.getSupportedBlockchains(),
+      timestamp: new Date().toISOString(),
+    });
+  } catch (err) {
+    getLogger(req).error("HSM health check failed", { error: err.message });
+    res.status(503).json({
+      status: "error",
+      error: err.message,
       timestamp: new Date().toISOString(),
     });
   }

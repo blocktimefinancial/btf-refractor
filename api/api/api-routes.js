@@ -3,6 +3,7 @@ const { registerRoute } = require("./router"),
   Signer = require("../business-logic/signer"),
   { serviceInfo } = require("../business-logic/info-handler"),
   monitoringRoutes = require("./monitoring-routes"),
+  keyRoutes = require("./key-routes"),
   ValidationMiddleware = require("../middleware/validation"),
   {
     normalizeRequest,
@@ -22,7 +23,7 @@ module.exports = function registerRoutes(app) {
       rate: "general",
       middleware: [ValidationMiddleware.validateTransactionHash()],
     },
-    ({ params }) => loadRehydrateTx(params.hash)
+    ({ params }) => loadRehydrateTx(params.hash),
   );
 
   registerRoute(
@@ -49,7 +50,7 @@ module.exports = function registerRoutes(app) {
         throw standardError(
           501,
           `Blockchain '${normalizedRequest.blockchain}' is not yet fully implemented. ` +
-            `Currently only Stellar transactions are supported.`
+            `Currently only Stellar transactions are supported.`,
         );
       }
 
@@ -71,11 +72,14 @@ module.exports = function registerRoutes(app) {
         networkName: normalizedRequest.networkName,
         txUri: normalizedRequest.txUri,
       };
-    }
+    },
   );
 
   // Add monitoring routes with validation
   app.use("/monitoring", monitoringRoutes);
+
+  // Add key management routes (admin-only, HSM operations)
+  app.use("/keys", keyRoutes);
 
   // Add validation error handler
   app.use(ValidationMiddleware.errorHandler());
