@@ -1,7 +1,5 @@
 const FsDataProvider = require("./fs-data-provider"),
-  MongodbDataProvider = require("./mongodb-data-provider"),
   MongooseDataProvider = require("./mongoose-data-provider"),
-  MongodbFirestoreDataProvider = require("./mongodb-firestore-data-provider"),
   InMemoryDataProvider = require("./inmemory-data-provider"),
   { storage } = require("../app.config");
 
@@ -13,21 +11,15 @@ class StorageLayer {
         case "fs":
           provider = new FsDataProvider();
           break;
-        case "mongodb":
-          provider = new MongodbDataProvider();
-          break;
         case "mongoose":
           provider = new MongooseDataProvider();
-          break;
-        case "mongodb+firestore":
-          provider = new MongodbFirestoreDataProvider();
           break;
         case "inmemory":
           provider = new InMemoryDataProvider();
           break;
         default:
           throw new Error(
-            `Unsupported data provider storage engine: ${providerName}`
+            `Unsupported data provider storage engine: ${providerName}`,
           );
       }
       await provider.init();
@@ -40,6 +32,17 @@ class StorageLayer {
    * @type {DataProvider}
    */
   dataProvider;
+
+  /**
+   * Close the active data provider and release resources.
+   * @returns {Promise<void>}
+   */
+  async close() {
+    if (this.dataProvider) {
+      await this.dataProvider.close();
+      this.dataProvider = null;
+    }
+  }
 }
 
 const storageLayer = new StorageLayer();

@@ -9,7 +9,7 @@ module.exports = {
   clearMocks: true,
 
   // Force Jest to exit after all tests complete (handles async cleanup issues)
-  forceExit: true,
+  // forceExit: true,  // Removed — fix open handles instead of masking them
 
   // Indicates whether the coverage information should be collected while executing the test
   // collectCoverage: false,
@@ -37,7 +37,24 @@ module.exports = {
   // ],
 
   // An object that configures minimum threshold enforcement for coverage results
-  // coverageThreshold: undefined,
+  coverageThreshold: {
+    global: {
+      branches: 50,
+      functions: 60,
+      lines: 65,
+      statements: 65,
+    },
+  },
+
+  // Collect coverage from source files, excluding tests and scripts
+  collectCoverageFrom: [
+    "**/*.js",
+    "!**/node_modules/**",
+    "!**/tests/**",
+    "!**/scripts/**",
+    "!jest.config.js",
+    "!app.config.js",
+  ],
 
   // A path to a custom dependency extractor
   // dependencyExtractor: undefined,

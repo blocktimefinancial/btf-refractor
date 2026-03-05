@@ -135,11 +135,7 @@ router.get("/:keyId", async (req, res) => {
     }
 
     const adapter = createAdapter();
-    // getKeyMetadata is routed through the hsmKeyStore
-    const metadata = await adapter._hsmKeyStore.getKeyMetadata({
-      keyId,
-      dbName: adapter.dbName,
-    });
+    const metadata = await adapter.getKeyMetadata(keyId);
 
     if (!metadata) {
       return res.status(404).json({
@@ -212,7 +208,7 @@ router.post("/:keyId/sign", async (req, res) => {
 
     logger.info("Signing with HSM key", { keyId, blockchain });
 
-    const adapter = createAdapter(req.body.tier);
+    const adapter = createAdapter(); // Always use server-configured tier
     const result = await adapter.sign(blockchain, keyId, payload);
 
     res.json({
@@ -259,12 +255,8 @@ router.post("/:keyId/rotate", async (req, res) => {
 
     logger.info("Rotating HSM key", { keyId });
 
-    const adapter = createAdapter(options.tier);
-    const result = await adapter._hsmKeyStore.rotateKey({
-      keyId,
-      dbName: adapter.dbName,
-      ...options,
-    });
+    const adapter = createAdapter();
+    const result = await adapter.rotateKey(keyId, options);
 
     res.json({
       oldKeyId: keyId,
@@ -307,10 +299,7 @@ router.delete("/:keyId", async (req, res) => {
     logger.info("Disabling HSM key", { keyId });
 
     const adapter = createAdapter();
-    await adapter._hsmKeyStore.disableKey({
-      keyId,
-      dbName: adapter.dbName,
-    });
+    await adapter.disableKey(keyId);
 
     res.json({
       keyId,

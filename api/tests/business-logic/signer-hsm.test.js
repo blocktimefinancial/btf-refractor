@@ -367,9 +367,14 @@ describe("Signer.signWithHsm()", () => {
         await signer.signWithHsm("stellar-key-1");
 
         expect(mockSignStellar).toHaveBeenCalledWith("stellar-key-1", mockTx);
+        // After fix: fromXDR is called with the resolved passphrase, not the raw network ID
+        const {
+          resolveNetworkParams,
+        } = require("../../business-logic/network-resolver");
+        const { passphrase } = resolveNetworkParams(signer.txInfo.network);
         expect(TransactionBuilder.fromXDR).toHaveBeenCalledWith(
           mockSignedXdr,
-          signer.txInfo.network,
+          passphrase,
         );
         expect(signer.accepted.length).toBe(1);
       } finally {

@@ -58,8 +58,11 @@ function requireAdminAuth() {
   };
 }
 
+const crypto = require("crypto");
+
 /**
- * Constant-time string comparison to prevent timing attacks
+ * Constant-time string comparison to prevent timing attacks.
+ * Uses Node.js native crypto.timingSafeEqual.
  * @param {string} a
  * @param {string} b
  * @returns {boolean}
@@ -69,23 +72,14 @@ function secureCompare(a, b) {
     return false;
   }
 
-  // Use a fixed-length comparison to prevent timing attacks
-  const lenA = Buffer.byteLength(a);
-  const lenB = Buffer.byteLength(b);
+  const bufA = Buffer.from(a);
+  const bufB = Buffer.from(b);
 
-  // Always do a comparison even if lengths differ (timing attack prevention)
-  const bufA = Buffer.alloc(Math.max(lenA, lenB));
-  const bufB = Buffer.alloc(Math.max(lenA, lenB));
-
-  Buffer.from(a).copy(bufA);
-  Buffer.from(b).copy(bufB);
-
-  let result = lenA === lenB ? 0 : 1;
-  for (let i = 0; i < bufA.length; i++) {
-    result |= bufA[i] ^ bufB[i];
+  if (bufA.length !== bufB.length) {
+    return false;
   }
 
-  return result === 0;
+  return crypto.timingSafeEqual(bufA, bufB);
 }
 
 /**

@@ -4,7 +4,51 @@ const { StrKey } = require("@stellar/stellar-sdk"),
   TxModel = require("../models/tx-model"),
   { getUnixTimestamp } = require("./timestamp-utils"),
   { hasHandler, getHandler } = require("./handlers/handler-factory"),
-  { isValidBlockchain, isValidNetwork } = require("./blockchain-registry");
+  { isValidBlockchain, isValidNetwork } = require("./blockchain-registry"),
+  {
+    validateCallbackUrl,
+    isValidCallbackUrl,
+  } = require("../utils/url-validator");
+
+/**
+ * Validate a callback URL synchronously (format + SSRF IP check).
+ * DNS-based check is deferred to callback-handler at dispatch time.
+ * @param {string} callbackUrl
+ * @throws {Error} if URL is invalid or targets a private IP
+ */
+function assertSafeCallbackUrl(callbackUrl) {
+  if (!isValidCallbackUrl(callbackUrl))
+    throw standardError(
+      400,
+      'Invalid URL supplied in "callbackUrl" parameter.',
+    );
+
+  // Synchronous SSRF check (IP literal + blocked hostnames)
+  const { URL } = require("url");
+  let parsed;
+  try {
+    parsed = new URL(callbackUrl);
+  } catch {
+    throw standardError(
+      400,
+      'Invalid URL supplied in "callbackUrl" parameter.',
+    );
+  }
+  const hostname = parsed.hostname.toLowerCase();
+  const { isPrivateIPv4, isPrivateIPv6 } = require("../utils/url-validator");
+  if (/^\d{1,3}(\.\d{1,3}){3}$/.test(hostname) && isPrivateIPv4(hostname)) {
+    throw standardError(400, "Callback URL targets a private IP address.");
+  }
+  if (hostname.includes(":") && isPrivateIPv6(hostname)) {
+    throw standardError(400, "Callback URL targets a private IP address.");
+  }
+  if (
+    hostname === "169.254.169.254" ||
+    hostname === "metadata.google.internal"
+  ) {
+    throw standardError(400, "Callback URL targets a blocked address.");
+  }
+}
 
 /**
  * Parse transaction parameters for Stellar (legacy)
@@ -32,7 +76,7 @@ function parseTxParams(
     txJson,
     originator,
     originatorSignature,
-  }
+  },
 ) {
   const now = getUnixTimestamp();
   const txInfo = new TxModel();
@@ -61,28 +105,20 @@ function parseTxParams(
   }
 
   if (callbackUrl) {
-    if (
-      !/^http(s)?:\/\/[-a-zA-Z0-9_+.]{2,256}\.[a-z]{2,4}\b(\/[-a-zA-Z0-9@:%_+.~#?&/=]*)?$/m.test(
-        callbackUrl
-      )
-    )
-      throw standardError(
-        400,
-        'Invalid URL supplied in "callbackUrl" parameter.'
-      );
+    assertSafeCallbackUrl(callbackUrl);
     txInfo.callbackUrl = callbackUrl;
   }
   if (desiredSigners && desiredSigners.length) {
     if (!(desiredSigners instanceof Array))
       throw standardError(
         400,
-        'Invalid "requestedSigners" parameter. Expected an array of Stellar public keys.'
+        'Invalid "requestedSigners" parameter. Expected an array of Stellar public keys.',
       );
     for (const key of desiredSigners)
       if (!StrKey.isValidEd25519PublicKey(key))
         throw standardError(
           400,
-          `Invalid "requestedSigners" parameter. Key ${key} is not a valid Stellar public key.`
+          `Invalid "requestedSigners" parameter. Key ${key} is not a valid Stellar public key.`,
         );
     txInfo.desiredSigners = desiredSigners;
   }
@@ -93,12 +129,12 @@ function parseTxParams(
     if (expires > 2147483647 || expires < 0)
       throw standardError(
         400,
-        `Invalid "expires" parameter. ${expires} is not a valid UNIX date.`
+        `Invalid "expires" parameter. ${expires} is not a valid UNIX date.`,
       );
     if (expires < now)
       throw standardError(
         400,
-        `Invalid "expires" parameter. ${expires} date has already passed.`
+        `Invalid "expires" parameter. ${expires} date has already passed.`,
       );
   }
 
@@ -107,7 +143,7 @@ function parseTxParams(
   if (txExpiration && txExpiration < now)
     throw standardError(
       400,
-      `Invalid transactions "timebounds.maxTime" value - the transaction already expired.`
+      `Invalid transactions "timebounds.maxTime" value - the transaction already expired.`,
     );
   if (txExpiration > 0 && txExpiration < expires) {
     expires = txExpiration;
@@ -171,7 +207,7 @@ function parseBlockchainAgnosticParams(request) {
   if (!isValidNetwork(blockchain, networkName)) {
     throw standardError(
       400,
-      `Invalid network '${networkName}' for blockchain '${blockchain}'`
+      `Invalid network '${networkName}' for blockchain '${blockchain}'`,
     );
   }
 
@@ -179,7 +215,7 @@ function parseBlockchainAgnosticParams(request) {
   if (!hasHandler(blockchain)) {
     throw standardError(
       501,
-      `Blockchain '${blockchain}' is not yet fully implemented`
+      `Blockchain '${blockchain}' is not yet fully implemented`,
     );
   }
 
@@ -213,18 +249,9 @@ function parseBlockchainAgnosticParams(request) {
     txInfo.xdr = legacy.xdr || payload;
   }
 
-  // Callback URL validation
+  // Callback URL validation (format + SSRF)
   if (callbackUrl) {
-    if (
-      !/^http(s)?:\/\/[-a-zA-Z0-9_+.]{2,256}\.[a-z]{2,4}\b(\/[-a-zA-Z0-9@:%_+.~#?&/=]*)?$/m.test(
-        callbackUrl
-      )
-    ) {
-      throw standardError(
-        400,
-        'Invalid URL supplied in "callbackUrl" parameter.'
-      );
-    }
+    assertSafeCallbackUrl(callbackUrl);
     txInfo.callbackUrl = callbackUrl;
   }
 
@@ -233,7 +260,7 @@ function parseBlockchainAgnosticParams(request) {
     if (!Array.isArray(desiredSigners)) {
       throw standardError(
         400,
-        'Invalid "desiredSigners" parameter. Expected an array of public keys.'
+        'Invalid "desiredSigners" parameter. Expected an array of public keys.',
       );
     }
 
@@ -243,7 +270,7 @@ function parseBlockchainAgnosticParams(request) {
       if (!handler.isValidPublicKey(key)) {
         throw standardError(
           400,
-          `Invalid "desiredSigners" parameter. Key ${key} is not a valid ${blockchain} public key.`
+          `Invalid "desiredSigners" parameter. Key ${key} is not a valid ${blockchain} public key.`,
         );
       }
     }
@@ -256,13 +283,13 @@ function parseBlockchainAgnosticParams(request) {
     if (maxTime > 2147483647 || maxTime < 0) {
       throw standardError(
         400,
-        `Invalid "maxTime" parameter. ${maxTime} is not a valid UNIX date.`
+        `Invalid "maxTime" parameter. ${maxTime} is not a valid UNIX date.`,
       );
     }
     if (maxTime < now) {
       throw standardError(
         400,
-        `Invalid "maxTime" parameter. ${maxTime} date has already passed.`
+        `Invalid "maxTime" parameter. ${maxTime} date has already passed.`,
       );
     }
     txInfo.maxTime = maxTime;

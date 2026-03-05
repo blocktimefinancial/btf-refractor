@@ -1,6 +1,7 @@
 const axios = require("axios");
 const config = require("../../app.config");
-const callbackConfig = config.callback || {};
+const { validateCallbackUrl } = require("../../utils/url-validator");
+const callbackConfig = config.callback;
 
 let callbackHandler = function (txInfo) {
   const { tx, network, hash, callbackUrl } = txInfo;
@@ -17,11 +18,22 @@ async function processCallback(txInfo) {
     throw new Error(
       `Attempt to execute an empty callback for tx ${txInfo.hash}`,
     );
+  // Runtime SSRF check with DNS resolution
+  const { safe, reason } = await validateCallbackUrl(txInfo.callbackUrl, {
+    checkDns: true,
+  });
+  if (!safe) {
+    throw new Error(`Callback URL blocked (SSRF): ${reason}`);
+  }
   const minShift = callbackConfig.retryMinShift || 4;
   const maxShift = callbackConfig.retryMaxShift || 12;
   for (let i = minShift; i <= maxShift; i++) {
-    const { statusCode } = await callbackHandler(txInfo);
-    if (statusCode === 200) return;
+    try {
+      const response = await callbackHandler(txInfo);
+      if (response.status >= 200 && response.status < 300) return;
+    } catch (e) {
+      // Network error — fall through to retry
+    }
     //repeat
     await new Promise((resolve) => setTimeout(resolve, 1 << i)); //exponential backoff waiting strategy
   }

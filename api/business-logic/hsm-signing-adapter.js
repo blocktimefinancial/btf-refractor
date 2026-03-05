@@ -63,7 +63,8 @@ class HsmSigningAdapter {
    */
   constructor(options = {}) {
     this.tier = options.tier || "envelope";
-    this.dbName = options.dbName || (config.hsm && config.hsm.databaseName) || "refractor";
+    this.dbName =
+      options.dbName || (config.hsm && config.hsm.databaseName) || "refractor";
 
     // Dependency injection — use provided overrides or load real modules
     // Use nullish coalescing so explicit null/undefined triggers lazy loading
@@ -380,6 +381,45 @@ class HsmSigningAdapter {
    */
   static getSupportedBlockchains() {
     return [...HSM_SUPPORTED_BLOCKCHAINS];
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
+  //  Key Management (public API for key-routes)
+  // ═══════════════════════════════════════════════════════════════════
+
+  /**
+   * Get metadata for an HSM-managed key.
+   * @param {string} keyId - Key identifier
+   * @returns {Promise<Object|null>} Key metadata or null
+   */
+  async getKeyMetadata(keyId) {
+    this._validateKeyId(keyId);
+    return this._hsmKeyStore.getKeyMetadata({ keyId, dbName: this.dbName });
+  }
+
+  /**
+   * Rotate an HSM-managed key.
+   * @param {string} keyId - Key identifier to rotate
+   * @param {Object} [options={}] - Rotation options
+   * @returns {Promise<Object>} Rotation result with newKeyId, publicKey, etc.
+   */
+  async rotateKey(keyId, options = {}) {
+    this._validateKeyId(keyId);
+    return this._hsmKeyStore.rotateKey({
+      keyId,
+      dbName: this.dbName,
+      ...options,
+    });
+  }
+
+  /**
+   * Disable (soft-delete) an HSM-managed key.
+   * @param {string} keyId - Key identifier to disable
+   * @returns {Promise<void>}
+   */
+  async disableKey(keyId) {
+    this._validateKeyId(keyId);
+    return this._hsmKeyStore.disableKey({ keyId, dbName: this.dbName });
   }
 
   // ═══════════════════════════════════════════════════════════════════

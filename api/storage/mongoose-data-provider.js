@@ -187,18 +187,25 @@ class MongooseDataProvider extends DataProvider {
    * @returns {Promise<Boolean>}
    */
   async updateTxStatus(hash, newStatus, expectedCurrentStatus, error = null) {
-    const update = {
-      status: newStatus,
-      updatedAt: new Date(),
+    const filter = { _id: hash };
+    if (expectedCurrentStatus !== undefined) {
+      filter.status = expectedCurrentStatus;
+    }
+
+    const updateOp = {
+      $set: {
+        status: newStatus,
+        updatedAt: new Date(),
+      },
     };
 
     if (error) {
-      update.lastError = error.message || error.toString();
-      // Fix: Use $inc operator correctly for retryCount increment
-      update.$inc = { retryCount: 1 };
+      updateOp.$set.lastError = error.message || error.toString();
+      updateOp.$inc = { retryCount: 1 };
     }
 
-    return this.updateTransaction(hash, update, expectedCurrentStatus);
+    const result = await TxModel.updateOne(filter, updateOp);
+    return result.matchedCount > 0;
   }
 
   /**
@@ -210,7 +217,7 @@ class MongooseDataProvider extends DataProvider {
    * @param {number} [filter.network] - Legacy Stellar network ID
    * @returns {AsyncIterable}
    */
-  listTransactions(filter = {}) {
+  listTransactions(filter = {}, { limit } = {}) {
     // Convert filter format for Mongoose
     const mongooseFilter = { ...filter };
 
@@ -252,7 +259,11 @@ class MongooseDataProvider extends DataProvider {
       lastError: 1,
     };
 
-    return TxModel.find(mongooseFilter, projection).cursor();
+    let query = TxModel.find(mongooseFilter, projection).lean();
+    if (limit && limit > 0) {
+      query = query.limit(limit);
+    }
+    return query.cursor();
   }
 
   /**

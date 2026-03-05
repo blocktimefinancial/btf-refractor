@@ -29,6 +29,18 @@ jest.setTimeout(10000);
 
 // Clean up after all tests
 afterAll(async () => {
-  // Allow any pending timers to clear
+  // Allow any pending microtasks / setImmediate callbacks to flush
   await new Promise((resolve) => setTimeout(resolve, 100));
+
+  // Clear any stray timers that tests may have leaked.
+  // Jest keeps a reference to the real timer functions, so we can
+  // simply iterate over known timer ids and clear them.
+  // This prevents leftover setInterval / setTimeout handles from
+  // keeping the process alive after the suite finishes.
+  const highwaterMark = setTimeout(() => {}, 0);
+  for (let i = 0; i < highwaterMark; i++) {
+    clearTimeout(i);
+    clearInterval(i);
+  }
+  clearTimeout(highwaterMark);
 });

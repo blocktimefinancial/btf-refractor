@@ -1,7 +1,8 @@
 const { normalizeNetworkName, resolveNetwork } = require("./network-resolver"),
   storageLayer = require("../storage/storage-layer"),
   { TransactionBuilder } = require("@stellar/stellar-sdk"),
-  { convertLegacyStellarToUri } = require("./tx-uri");
+  { convertLegacyStellarToUri } = require("./tx-uri"),
+  { standardError } = require("./std-error");
 
 /**
  * Network ID to network name mapping for response
@@ -16,9 +17,7 @@ const NETWORK_ID_TO_NAME = {
 async function loadRehydrateTx(hash) {
   const txInfo = await storageLayer.dataProvider.findTransaction(hash);
   if (!txInfo) {
-    const notFound = new Error(`Transaction ${hash} not found.`);
-    notFound.status = 404;
-    return Promise.reject(notFound);
+    return Promise.reject(standardError(404, `Transaction ${hash} not found.`));
   }
   return rehydrateTx(txInfo);
 }
@@ -39,7 +38,7 @@ function rehydrateTx(txInfo) {
     // Stellar-specific rehydration
     const tx = TransactionBuilder.fromXDR(
       xdr,
-      resolveNetwork(network).passphrase
+      resolveNetwork(network).passphrase,
     );
     //rehydrate - set network and add signatures from tx info
     res.network = normalizeNetworkName(network);

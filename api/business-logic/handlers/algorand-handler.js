@@ -192,12 +192,14 @@ class AlgorandHandler extends BlockchainHandler {
    * @private
    */
   _simpleMsgpackDecode(buffer) {
-    // For production, this should use the algosdk or @msgpack/msgpack library.
-    // This is a placeholder that works with the base64 round-trip pattern:
-    // the caller passes the raw bytes which will be forwarded to algosdk
-    // at signing time.
+    // LIMITATION: This is a minimal msgpack passthrough that preserves the raw
+    // binary data for signing. It does NOT fully decode the msgpack structure.
+    // For full transaction introspection (fee analysis, group validation, etc.),
+    // integrate the `algosdk` or `@msgpack/msgpack` package and replace this
+    // method with a proper decoder.
     //
-    // Store raw bytes and parse known fields for metadata extraction.
+    // Current behavior: raw bytes are stored and forwarded to the signing layer,
+    // which correctly signs over the exact binary representation.
     return {
       _rawMsgpack: buffer,
       _isPacked: true,
@@ -704,11 +706,8 @@ class AlgorandHandler extends BlockchainHandler {
 
     // Callback URL validation
     if (callbackUrl) {
-      if (
-        !/^http(s)?:\/\/[-a-zA-Z0-9_+.]{2,256}\.[a-z]{2,4}\b(\/[-a-zA-Z0-9@:%_+.~#?&/=]*)?$/m.test(
-          callbackUrl,
-        )
-      ) {
+      const { isValidCallbackUrl } = require("../../utils/url-validator");
+      if (!isValidCallbackUrl(callbackUrl)) {
         throw standardError(
           400,
           'Invalid URL supplied in "callbackUrl" parameter.',

@@ -28,11 +28,9 @@ jest.mock("../../business-logic/hsm-signing-adapter", () => {
     createKey: mockCreateKey,
     sign: mockSignMethod,
     healthCheck: mockHealthCheck,
-    _hsmKeyStore: {
-      getKeyMetadata: mockGetKeyMetadata,
-      rotateKey: mockRotateKey,
-      disableKey: mockDisableKey,
-    },
+    getKeyMetadata: mockGetKeyMetadata,
+    rotateKey: mockRotateKey,
+    disableKey: mockDisableKey,
     dbName: "refractor",
   }));
   MockAdapter.isSupported = jest.fn((chain) =>
@@ -387,10 +385,8 @@ describe("Key Management Routes", () => {
 
       expect(res.status).toBe(200);
       expect(mockRotateKey).toHaveBeenCalledWith(
-        expect.objectContaining({
-          keyId: "key-123",
-          reason: "scheduled-rotation",
-        }),
+        "key-123",
+        { reason: "scheduled-rotation" },
       );
     });
 

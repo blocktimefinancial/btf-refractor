@@ -12,6 +12,9 @@ const {
 const logger = require("../utils/logger").forComponent("monitoring");
 const { isValidBlockchain } = require("../business-logic/blockchain-registry");
 const config = require("../app.config");
+const {
+  getAllMetrics: getCircuitBreakerMetrics,
+} = require("../utils/circuit-breaker");
 
 const router = express.Router();
 
@@ -91,6 +94,7 @@ router.get("/metrics", async (req, res) => {
         status: finalizerStatus,
       },
       database: dbStats,
+      circuitBreakers: getCircuitBreakerMetrics(),
       ...(blockchain && { blockchain }),
       timestamp: new Date().toISOString(),
     });
@@ -231,11 +235,9 @@ router.post("/queue/concurrency", requireAdminAuth(), (req, res) => {
       (config.queue && config.queue.maxAdminConcurrency) || 100;
 
     if (!concurrency || concurrency < 1 || concurrency > maxAdminConcurrency) {
-      return res
-        .status(400)
-        .json({
-          error: `Invalid concurrency value (1-${maxAdminConcurrency})`,
-        });
+      return res.status(400).json({
+        error: `Invalid concurrency value (1-${maxAdminConcurrency})`,
+      });
     }
 
     finalizer.setQueueConcurrency(parseInt(concurrency));

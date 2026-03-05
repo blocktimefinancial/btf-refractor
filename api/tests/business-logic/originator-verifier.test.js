@@ -67,7 +67,10 @@ describe("Originator Verifier", () => {
     it("should return false for non-EVM chains", () => {
       expect(isEvmBlockchain("stellar")).toBe(false);
       expect(isEvmBlockchain("solana")).toBe(false);
-      expect(isEvmBlockchain("onemoney")).toBe(false);
+    });
+
+    it("should return true for onemoney (EVM-compatible)", () => {
+      expect(isEvmBlockchain("onemoney")).toBe(true);
     });
   });
 
@@ -118,19 +121,19 @@ describe("Originator Verifier", () => {
   describe("verifyOriginatorSignature()", () => {
     it("should return false if originator is missing", () => {
       expect(verifyOriginatorSignature("stellar", null, "sig", testHash)).toBe(
-        false
+        false,
       );
     });
 
     it("should return false if signature is missing", () => {
       expect(
-        verifyOriginatorSignature("stellar", validStellarKey, null, testHash)
+        verifyOriginatorSignature("stellar", validStellarKey, null, testHash),
       ).toBe(false);
     });
 
     it("should return false for unsupported blockchain", () => {
       expect(
-        verifyOriginatorSignature("unsupported", "key", "sig", testHash)
+        verifyOriginatorSignature("unsupported", "key", "sig", testHash),
       ).toBe(false);
     });
 
@@ -141,7 +144,7 @@ describe("Originator Verifier", () => {
         "stellar",
         validStellarKey,
         validSig,
-        testHash
+        testHash,
       );
       expect(result).toBe(true);
     });
@@ -152,7 +155,7 @@ describe("Originator Verifier", () => {
         "stellar",
         validStellarKey,
         validSig,
-        testHashBuffer
+        testHashBuffer,
       );
       expect(result).toBe(true);
     });
@@ -163,7 +166,7 @@ describe("Originator Verifier", () => {
         "stellar",
         validStellarKey,
         invalidSig,
-        testHash
+        testHash,
       );
       expect(result).toBe(false);
     });
@@ -199,7 +202,7 @@ describe("Originator Verifier", () => {
           validStellarKey,
           "invalid-sig",
           testHash,
-          { verifySignature: true }
+          { verifySignature: true },
         );
       }).toThrow(/Invalid originator signature/);
     });

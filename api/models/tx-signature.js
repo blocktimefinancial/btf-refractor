@@ -12,7 +12,10 @@ class TxSignature {
     signature
 
     toJSON() {
-        return {key: this.key, signature: this.signature.toString('base64')}
+        const sig = Buffer.isBuffer(this.signature)
+            ? this.signature.toString('base64')
+            : this.signature;
+        return {key: this.key, signature: sig}
     }
 }
 

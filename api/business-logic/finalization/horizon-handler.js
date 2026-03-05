@@ -1,20 +1,25 @@
 const { Horizon, TransactionBuilder } = require("@stellar/stellar-sdk"),
   EnhancedQueue = require("../queue/enhanced-queue"),
   { resolveNetwork } = require("../network-resolver");
-const config = require("../../app.config.json");
+const config = require("../../app.config");
 const logger = require("../../utils/logger").forComponent("horizon");
+const { getBreaker } = require("../../utils/circuit-breaker");
 
 const servers = {};
+
+// Circuit breaker for Horizon submissions
+const horizonBreaker = getBreaker("horizon");
 
 /**
  * @param {TxModel} txInfo
  * @return {Promise}
  */
 let submitTransactionWorker = function (txInfo) {
-  let horizon = servers[txInfo.network];
+  const normalizedKey = String(txInfo.network);
+  let horizon = servers[normalizedKey];
   const network = resolveNetwork(txInfo.network);
   if (!horizon) {
-    servers[txInfo.network] = horizon = new Horizon.Server(network.horizon);
+    servers[normalizedKey] = horizon = new Horizon.Server(network.horizon);
   }
   return horizon.submitTransaction(
     TransactionBuilder.fromXDR(txInfo.xdr, network.passphrase),
@@ -22,18 +27,19 @@ let submitTransactionWorker = function (txInfo) {
   );
 };
 
-// Wrapper function that calls through the variable so setSubmitTransactionCallback works
-const submitTransactionWrapper = (txInfo) => submitTransactionWorker(txInfo);
+// Wrapper function that calls through the circuit breaker
+const submitTransactionWrapper = (txInfo) =>
+  horizonBreaker.fire(() => submitTransactionWorker(txInfo));
 
 // Enhanced queue for Horizon submissions with retry logic and monitoring
 const horizonQueue = new EnhancedQueue(submitTransactionWrapper, {
-  concurrency: config.horizonConcurrency || 10,
-  maxConcurrency: config.maxHorizonConcurrency || 20,
-  minConcurrency: config.horizonMinConcurrency || 1,
-  adaptiveConcurrency: config.adaptiveHorizonConcurrency || true,
-  retryAttempts: config.horizonRetryAttempts || 5,
-  retryDelay: config.horizonRetryDelay || 2000,
-  metricsInterval: config.metricsInterval || 30000,
+  concurrency: config.horizonConcurrency ?? 10,
+  maxConcurrency: config.maxHorizonConcurrency ?? 20,
+  minConcurrency: config.horizonMinConcurrency ?? 1,
+  adaptiveConcurrency: config.adaptiveHorizonConcurrency ?? true,
+  retryAttempts: config.horizonRetryAttempts ?? 5,
+  retryDelay: config.horizonRetryDelay ?? 2000,
+  metricsInterval: config.metricsInterval ?? 30000,
 });
 
 // Set up monitoring for horizon queue

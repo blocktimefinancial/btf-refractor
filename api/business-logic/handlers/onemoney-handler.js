@@ -355,11 +355,8 @@ class OneMoneyHandler extends EvmHandler {
 
     // Parse callback URL
     if (callbackUrl) {
-      if (
-        !/^http(s)?:\/\/[-a-zA-Z0-9_+.]{2,256}\.[a-z]{2,4}\b(\/[-a-zA-Z0-9@:%_+.~#?&/=]*)?$/m.test(
-          callbackUrl,
-        )
-      ) {
+      const { isValidCallbackUrl } = require("../../utils/url-validator");
+      if (!isValidCallbackUrl(callbackUrl)) {
         throw standardError(
           400,
           'Invalid URL supplied in "callbackUrl" parameter.',

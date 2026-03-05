@@ -35,7 +35,7 @@ function normalizeNetworkName(network) {
     case "2":
       return "futurenet";
     default:
-      return network.toLowerCase();
+      return String(network).toLowerCase();
   }
 }
 
@@ -100,7 +100,7 @@ function resolveBlockchainNetwork(blockchain, networkName) {
   if (!isValidNetwork(blockchain, normalizedNetwork)) {
     throw standardError(
       400,
-      `Invalid network '${networkName}' for blockchain '${blockchain}'`
+      `Invalid network '${networkName}' for blockchain '${blockchain}'`,
     );
   }
 

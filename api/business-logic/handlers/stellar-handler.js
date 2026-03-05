@@ -62,7 +62,7 @@ class StellarHandler extends BlockchainHandler {
     if (encoding !== "base64") {
       throw standardError(
         400,
-        `Stellar only supports base64 encoding, got: ${encoding}`
+        `Stellar only supports base64 encoding, got: ${encoding}`,
       );
     }
 
@@ -223,7 +223,7 @@ class StellarHandler extends BlockchainHandler {
     const matchedKey = potentialSigners.find(
       (key) =>
         hintMatchesKey(hint, key) &&
-        this.verifySignature(key, signature, hashRaw)
+        this.verifySignature(key, signature, hashRaw),
     );
 
     return {
@@ -328,7 +328,7 @@ class StellarHandler extends BlockchainHandler {
     const params = {
       blockchain: "stellar",
       networkName: this.normalizeNetworkName(
-        request.networkName || request.network
+        request.networkName || request.network,
       ),
       xdr: transaction.toXDR(),
       payload: transaction.toXDR(),
@@ -338,14 +338,11 @@ class StellarHandler extends BlockchainHandler {
 
     // Parse callback URL
     if (callbackUrl) {
-      if (
-        !/^http(s)?:\/\/[-a-zA-Z0-9_+.]{2,256}\.[a-z]{2,4}\b(\/[-a-zA-Z0-9@:%_+.~#?&/=]*)?$/m.test(
-          callbackUrl
-        )
-      ) {
+      const { isValidCallbackUrl } = require("../../utils/url-validator");
+      if (!isValidCallbackUrl(callbackUrl)) {
         throw standardError(
           400,
-          'Invalid URL supplied in "callbackUrl" parameter.'
+          'Invalid URL supplied in "callbackUrl" parameter.',
         );
       }
       params.callbackUrl = callbackUrl;
@@ -356,14 +353,14 @@ class StellarHandler extends BlockchainHandler {
       if (!Array.isArray(desiredSigners)) {
         throw standardError(
           400,
-          'Invalid "desiredSigners" parameter. Expected an array of Stellar public keys.'
+          'Invalid "desiredSigners" parameter. Expected an array of Stellar public keys.',
         );
       }
       for (const key of desiredSigners) {
         if (!this.isValidPublicKey(key)) {
           throw standardError(
             400,
-            `Invalid "desiredSigners" parameter. Key ${key} is not a valid Stellar public key.`
+            `Invalid "desiredSigners" parameter. Key ${key} is not a valid Stellar public key.`,
           );
         }
       }
@@ -379,13 +376,13 @@ class StellarHandler extends BlockchainHandler {
       if (expires > 2147483647 || expires < 0) {
         throw standardError(
           400,
-          `Invalid "expires" parameter. ${expires} is not a valid UNIX date.`
+          `Invalid "expires" parameter. ${expires} is not a valid UNIX date.`,
         );
       }
       if (expires < now) {
         throw standardError(
           400,
-          `Invalid "expires" parameter. ${expires} date has already passed.`
+          `Invalid "expires" parameter. ${expires} date has already passed.`,
         );
       }
     }
@@ -395,7 +392,7 @@ class StellarHandler extends BlockchainHandler {
     if (txExpiration && txExpiration < now) {
       throw standardError(
         400,
-        "Invalid transaction timebounds.maxTime value - the transaction already expired."
+        "Invalid transaction timebounds.maxTime value - the transaction already expired.",
       );
     }
 
@@ -432,7 +429,7 @@ class StellarHandler extends BlockchainHandler {
       default:
         throw standardError(
           400,
-          `Cannot convert network "${networkName}" to legacy ID`
+          `Cannot convert network "${networkName}" to legacy ID`,
         );
     }
   }

@@ -4,6 +4,25 @@ require("dotenv").config();
 // Load base configuration from JSON
 const baseConfig = require("./app.config.json");
 
+/**
+ * Safely traverse a nested object by dot-delimited path.
+ * Returns `defaultValue` when any segment is undefined/null.
+ *
+ * @param {Object} obj - Root object to traverse
+ * @param {string} path - Dot-delimited path (e.g. "rateLimit.general.windowMs")
+ * @param {*} defaultValue - Fallback when path is missing
+ * @returns {*}
+ */
+function configGet(obj, path, defaultValue) {
+  const segments = path.split(".");
+  let current = obj;
+  for (const seg of segments) {
+    if (current == null || typeof current !== "object") return defaultValue;
+    current = current[seg];
+  }
+  return current !== undefined && current !== null ? current : defaultValue;
+}
+
 // Create enhanced configuration with environment variable support
 const config = {
   ...baseConfig,
@@ -57,30 +76,18 @@ const config = {
     general: {
       windowMs: process.env.RATE_LIMIT_WINDOW_MS
         ? parseInt(process.env.RATE_LIMIT_WINDOW_MS, 10)
-        : (baseConfig.rateLimit &&
-            baseConfig.rateLimit.general &&
-            baseConfig.rateLimit.general.windowMs) ||
-          1000,
+        : configGet(baseConfig, "rateLimit.general.windowMs", 1000),
       max: process.env.RATE_LIMIT_MAX
         ? parseInt(process.env.RATE_LIMIT_MAX, 10)
-        : (baseConfig.rateLimit &&
-            baseConfig.rateLimit.general &&
-            baseConfig.rateLimit.general.max) ||
-          100,
+        : configGet(baseConfig, "rateLimit.general.max", 100),
     },
     strict: {
       windowMs: process.env.RATE_LIMIT_STRICT_WINDOW_MS
         ? parseInt(process.env.RATE_LIMIT_STRICT_WINDOW_MS, 10)
-        : (baseConfig.rateLimit &&
-            baseConfig.rateLimit.strict &&
-            baseConfig.rateLimit.strict.windowMs) ||
-          1000,
+        : configGet(baseConfig, "rateLimit.strict.windowMs", 1000),
       max: process.env.RATE_LIMIT_STRICT_MAX
         ? parseInt(process.env.RATE_LIMIT_STRICT_MAX, 10)
-        : (baseConfig.rateLimit &&
-            baseConfig.rateLimit.strict &&
-            baseConfig.rateLimit.strict.max) ||
-          50,
+        : configGet(baseConfig, "rateLimit.strict.max", 50),
     },
   },
 
@@ -88,211 +95,208 @@ const config = {
   cors: {
     maxAge: process.env.CORS_MAX_AGE
       ? parseInt(process.env.CORS_MAX_AGE, 10)
-      : (baseConfig.cors && baseConfig.cors.maxAge) || 86400,
+      : configGet(baseConfig, "cors.maxAge", 86400),
   },
 
   // ── MongoDB Connection Pool ───────────────────────────────────
   mongodb: {
     maxPoolSize: process.env.MONGODB_MAX_POOL_SIZE
       ? parseInt(process.env.MONGODB_MAX_POOL_SIZE, 10)
-      : (baseConfig.mongodb && baseConfig.mongodb.maxPoolSize) || 10,
+      : configGet(baseConfig, "mongodb.maxPoolSize", 10),
     minPoolSize: process.env.MONGODB_MIN_POOL_SIZE
       ? parseInt(process.env.MONGODB_MIN_POOL_SIZE, 10)
-      : (baseConfig.mongodb && baseConfig.mongodb.minPoolSize) || 2,
-    maxIdleTimeMs:
-      (baseConfig.mongodb && baseConfig.mongodb.maxIdleTimeMs) || 30000,
-    serverSelectionTimeoutMs:
-      (baseConfig.mongodb && baseConfig.mongodb.serverSelectionTimeoutMs) ||
+      : configGet(baseConfig, "mongodb.minPoolSize", 2),
+    maxIdleTimeMs: configGet(baseConfig, "mongodb.maxIdleTimeMs", 30000),
+    serverSelectionTimeoutMs: configGet(
+      baseConfig,
+      "mongodb.serverSelectionTimeoutMs",
       5000,
-    socketTimeoutMs:
-      (baseConfig.mongodb && baseConfig.mongodb.socketTimeoutMs) || 45000,
-    family: (baseConfig.mongodb && baseConfig.mongodb.family) || 4,
+    ),
+    socketTimeoutMs: configGet(baseConfig, "mongodb.socketTimeoutMs", 45000),
+    family: configGet(baseConfig, "mongodb.family", 4),
   },
 
   // ── Logging ───────────────────────────────────────────────────
   logging: {
-    maxFileSize:
-      (baseConfig.logging && baseConfig.logging.maxFileSize) ||
-      10 * 1024 * 1024,
-    maxFiles: (baseConfig.logging && baseConfig.logging.maxFiles) || 5,
+    maxFileSize: configGet(baseConfig, "logging.maxFileSize", 10 * 1024 * 1024),
+    maxFiles: configGet(baseConfig, "logging.maxFiles", 5),
   },
 
   // ── Circuit Breaker Defaults ──────────────────────────────────
   circuitBreaker: {
     horizon: {
-      timeout:
-        (baseConfig.circuitBreaker &&
-          baseConfig.circuitBreaker.horizon &&
-          baseConfig.circuitBreaker.horizon.timeout) ||
-        10000,
-      errorThresholdPercentage:
-        (baseConfig.circuitBreaker &&
-          baseConfig.circuitBreaker.horizon &&
-          baseConfig.circuitBreaker.horizon.errorThresholdPercentage) ||
+      timeout: configGet(baseConfig, "circuitBreaker.horizon.timeout", 10000),
+      errorThresholdPercentage: configGet(
+        baseConfig,
+        "circuitBreaker.horizon.errorThresholdPercentage",
         50,
-      resetTimeout:
-        (baseConfig.circuitBreaker &&
-          baseConfig.circuitBreaker.horizon &&
-          baseConfig.circuitBreaker.horizon.resetTimeout) ||
+      ),
+      resetTimeout: configGet(
+        baseConfig,
+        "circuitBreaker.horizon.resetTimeout",
         30000,
-      volumeThreshold:
-        (baseConfig.circuitBreaker &&
-          baseConfig.circuitBreaker.horizon &&
-          baseConfig.circuitBreaker.horizon.volumeThreshold) ||
+      ),
+      volumeThreshold: configGet(
+        baseConfig,
+        "circuitBreaker.horizon.volumeThreshold",
         5,
+      ),
     },
     evmRpc: {
-      timeout:
-        (baseConfig.circuitBreaker &&
-          baseConfig.circuitBreaker.evmRpc &&
-          baseConfig.circuitBreaker.evmRpc.timeout) ||
-        15000,
-      errorThresholdPercentage:
-        (baseConfig.circuitBreaker &&
-          baseConfig.circuitBreaker.evmRpc &&
-          baseConfig.circuitBreaker.evmRpc.errorThresholdPercentage) ||
+      timeout: configGet(baseConfig, "circuitBreaker.evmRpc.timeout", 15000),
+      errorThresholdPercentage: configGet(
+        baseConfig,
+        "circuitBreaker.evmRpc.errorThresholdPercentage",
         50,
-      resetTimeout:
-        (baseConfig.circuitBreaker &&
-          baseConfig.circuitBreaker.evmRpc &&
-          baseConfig.circuitBreaker.evmRpc.resetTimeout) ||
+      ),
+      resetTimeout: configGet(
+        baseConfig,
+        "circuitBreaker.evmRpc.resetTimeout",
         30000,
-      volumeThreshold:
-        (baseConfig.circuitBreaker &&
-          baseConfig.circuitBreaker.evmRpc &&
-          baseConfig.circuitBreaker.evmRpc.volumeThreshold) ||
+      ),
+      volumeThreshold: configGet(
+        baseConfig,
+        "circuitBreaker.evmRpc.volumeThreshold",
         5,
+      ),
     },
     hsm: {
-      timeout:
-        (baseConfig.circuitBreaker &&
-          baseConfig.circuitBreaker.hsm &&
-          baseConfig.circuitBreaker.hsm.timeout) ||
-        5000,
-      errorThresholdPercentage:
-        (baseConfig.circuitBreaker &&
-          baseConfig.circuitBreaker.hsm &&
-          baseConfig.circuitBreaker.hsm.errorThresholdPercentage) ||
+      timeout: configGet(baseConfig, "circuitBreaker.hsm.timeout", 5000),
+      errorThresholdPercentage: configGet(
+        baseConfig,
+        "circuitBreaker.hsm.errorThresholdPercentage",
         30,
-      resetTimeout:
-        (baseConfig.circuitBreaker &&
-          baseConfig.circuitBreaker.hsm &&
-          baseConfig.circuitBreaker.hsm.resetTimeout) ||
+      ),
+      resetTimeout: configGet(
+        baseConfig,
+        "circuitBreaker.hsm.resetTimeout",
         15000,
-      volumeThreshold:
-        (baseConfig.circuitBreaker &&
-          baseConfig.circuitBreaker.hsm &&
-          baseConfig.circuitBreaker.hsm.volumeThreshold) ||
+      ),
+      volumeThreshold: configGet(
+        baseConfig,
+        "circuitBreaker.hsm.volumeThreshold",
         3,
+      ),
     },
   },
 
   // ── Queue Tuning ──────────────────────────────────────────────
   queue: {
-    maxProcessingTimeSamples:
-      (baseConfig.queue && baseConfig.queue.maxProcessingTimeSamples) || 100,
-    rateLimitBackoffMultiplier:
-      (baseConfig.queue && baseConfig.queue.rateLimitBackoffMultiplier) || 3,
-    rateLimitBackoffJitter:
-      (baseConfig.queue && baseConfig.queue.rateLimitBackoffJitter) || 2000,
-    rateLimitMaxDelay:
-      (baseConfig.queue && baseConfig.queue.rateLimitMaxDelay) || 30000,
-    rateLimitConcurrencyFactor:
-      (baseConfig.queue && baseConfig.queue.rateLimitConcurrencyFactor) || 0.7,
-    retryJitter: (baseConfig.queue && baseConfig.queue.retryJitter) || 1000,
-    drainPollInterval:
-      (baseConfig.queue && baseConfig.queue.drainPollInterval) || 100,
-    adaptiveErrorRateThreshold:
-      (baseConfig.queue && baseConfig.queue.adaptiveErrorRateThreshold) || 0.1,
-    concurrencyReductionFactor:
-      (baseConfig.queue && baseConfig.queue.concurrencyReductionFactor) || 0.8,
+    maxProcessingTimeSamples: configGet(
+      baseConfig,
+      "queue.maxProcessingTimeSamples",
+      100,
+    ),
+    rateLimitBackoffMultiplier: configGet(
+      baseConfig,
+      "queue.rateLimitBackoffMultiplier",
+      3,
+    ),
+    rateLimitBackoffJitter: configGet(
+      baseConfig,
+      "queue.rateLimitBackoffJitter",
+      2000,
+    ),
+    rateLimitMaxDelay: configGet(baseConfig, "queue.rateLimitMaxDelay", 30000),
+    rateLimitConcurrencyFactor: configGet(
+      baseConfig,
+      "queue.rateLimitConcurrencyFactor",
+      0.7,
+    ),
+    retryJitter: configGet(baseConfig, "queue.retryJitter", 1000),
+    drainPollInterval: configGet(baseConfig, "queue.drainPollInterval", 100),
+    adaptiveErrorRateThreshold: configGet(
+      baseConfig,
+      "queue.adaptiveErrorRateThreshold",
+      0.1,
+    ),
+    concurrencyReductionFactor: configGet(
+      baseConfig,
+      "queue.concurrencyReductionFactor",
+      0.8,
+    ),
     bulkOps: {
-      queueThreshold:
-        (baseConfig.queue &&
-          baseConfig.queue.bulkOps &&
-          baseConfig.queue.bulkOps.queueThreshold) ||
-        50,
-      successThreshold:
-        (baseConfig.queue &&
-          baseConfig.queue.bulkOps &&
-          baseConfig.queue.bulkOps.successThreshold) ||
+      queueThreshold: configGet(baseConfig, "queue.bulkOps.queueThreshold", 50),
+      successThreshold: configGet(
+        baseConfig,
+        "queue.bulkOps.successThreshold",
         0.98,
-      maxProcessingTime:
-        (baseConfig.queue &&
-          baseConfig.queue.bulkOps &&
-          baseConfig.queue.bulkOps.maxProcessingTime) ||
+      ),
+      maxProcessingTime: configGet(
+        baseConfig,
+        "queue.bulkOps.maxProcessingTime",
         3000,
-      concurrencyCap:
-        (baseConfig.queue &&
-          baseConfig.queue.bulkOps &&
-          baseConfig.queue.bulkOps.concurrencyCap) ||
+      ),
+      concurrencyCap: configGet(
+        baseConfig,
+        "queue.bulkOps.concurrencyCap",
         0.7,
-      slowThreshold:
-        (baseConfig.queue &&
-          baseConfig.queue.bulkOps &&
-          baseConfig.queue.bulkOps.slowThreshold) ||
-        8000,
-      minSuccessRate:
-        (baseConfig.queue &&
-          baseConfig.queue.bulkOps &&
-          baseConfig.queue.bulkOps.minSuccessRate) ||
+      ),
+      slowThreshold: configGet(baseConfig, "queue.bulkOps.slowThreshold", 8000),
+      minSuccessRate: configGet(
+        baseConfig,
+        "queue.bulkOps.minSuccessRate",
         0.95,
+      ),
     },
     normalOps: {
-      scaleUpQueueFactor:
-        (baseConfig.queue &&
-          baseConfig.queue.normalOps &&
-          baseConfig.queue.normalOps.scaleUpQueueFactor) ||
+      scaleUpQueueFactor: configGet(
+        baseConfig,
+        "queue.normalOps.scaleUpQueueFactor",
         2,
-      successThreshold:
-        (baseConfig.queue &&
-          baseConfig.queue.normalOps &&
-          baseConfig.queue.normalOps.successThreshold) ||
+      ),
+      successThreshold: configGet(
+        baseConfig,
+        "queue.normalOps.successThreshold",
         0.98,
-      maxProcessingTime:
-        (baseConfig.queue &&
-          baseConfig.queue.normalOps &&
-          baseConfig.queue.normalOps.maxProcessingTime) ||
+      ),
+      maxProcessingTime: configGet(
+        baseConfig,
+        "queue.normalOps.maxProcessingTime",
         4000,
-      slowThreshold:
-        (baseConfig.queue &&
-          baseConfig.queue.normalOps &&
-          baseConfig.queue.normalOps.slowThreshold) ||
+      ),
+      slowThreshold: configGet(
+        baseConfig,
+        "queue.normalOps.slowThreshold",
         10000,
-      minSuccessRate:
-        (baseConfig.queue &&
-          baseConfig.queue.normalOps &&
-          baseConfig.queue.normalOps.minSuccessRate) ||
+      ),
+      minSuccessRate: configGet(
+        baseConfig,
+        "queue.normalOps.minSuccessRate",
         0.9,
+      ),
     },
-    maxAdminConcurrency:
-      (baseConfig.queue && baseConfig.queue.maxAdminConcurrency) || 100,
+    maxAdminConcurrency: configGet(
+      baseConfig,
+      "queue.maxAdminConcurrency",
+      100,
+    ),
   },
 
   // ── Callback Retry ────────────────────────────────────────────
   callback: {
-    retryMinShift:
-      (baseConfig.callback && baseConfig.callback.retryMinShift) || 4,
-    retryMaxShift:
-      (baseConfig.callback && baseConfig.callback.retryMaxShift) || 12,
+    retryMinShift: configGet(baseConfig, "callback.retryMinShift", 4),
+    retryMaxShift: configGet(baseConfig, "callback.retryMaxShift", 12),
   },
 
   // ── Finalizer ─────────────────────────────────────────────────
   finalizer: {
-    fastPollIntervalMs:
-      (baseConfig.finalizer && baseConfig.finalizer.fastPollIntervalMs) || 500,
+    fastPollIntervalMs: configGet(
+      baseConfig,
+      "finalizer.fastPollIntervalMs",
+      500,
+    ),
   },
 
   // ── PM2 Ecosystem Defaults ────────────────────────────────────
   pm2: {
-    maxMemoryRestart:
-      (baseConfig.pm2 && baseConfig.pm2.maxMemoryRestart) || "1G",
-    minUptime: (baseConfig.pm2 && baseConfig.pm2.minUptime) || "10s",
-    maxRestarts: (baseConfig.pm2 && baseConfig.pm2.maxRestarts) || 15,
-    restartDelay: (baseConfig.pm2 && baseConfig.pm2.restartDelay) || 4000,
-    killTimeout: (baseConfig.pm2 && baseConfig.pm2.killTimeout) || 5000,
-    listenTimeout: (baseConfig.pm2 && baseConfig.pm2.listenTimeout) || 10000,
-    uvThreadpoolSize: (baseConfig.pm2 && baseConfig.pm2.uvThreadpoolSize) || 16,
+    maxMemoryRestart: configGet(baseConfig, "pm2.maxMemoryRestart", "1G"),
+    minUptime: configGet(baseConfig, "pm2.minUptime", "10s"),
+    maxRestarts: configGet(baseConfig, "pm2.maxRestarts", 15),
+    restartDelay: configGet(baseConfig, "pm2.restartDelay", 4000),
+    killTimeout: configGet(baseConfig, "pm2.killTimeout", 5000),
+    listenTimeout: configGet(baseConfig, "pm2.listenTimeout", 10000),
+    uvThreadpoolSize: configGet(baseConfig, "pm2.uvThreadpoolSize", 16),
   },
 
   // ── HSM / Confidential Computing Configuration ────────────────
@@ -343,4 +347,6 @@ console.log(
   }`,
 );
 
+// Export config as default, attach configGet as a utility
+config.configGet = configGet;
 module.exports = config;

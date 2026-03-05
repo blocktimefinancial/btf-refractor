@@ -69,35 +69,6 @@
   app.use(bodyParser.json({ limit: payloadLimit }));
   app.use(bodyParser.urlencoded({ extended: false, limit: payloadLimit }));
 
-  // error handler
-  app.use((err, req, res, next) => {
-    const reqLogger = req.logger || logger;
-
-    // Handle payload too large errors
-    if (err.type === "entity.too.large") {
-      reqLogger.warn("Request payload too large", {
-        ip: req.ip,
-        path: req.path,
-        limit: payloadLimit,
-      });
-      return res.status(413).json({ error: "Payload too large" });
-    }
-    // Handle JSON parse errors
-    if (err instanceof SyntaxError && err.status === 400 && "body" in err) {
-      reqLogger.warn("Invalid JSON in request body", {
-        ip: req.ip,
-        path: req.path,
-      });
-      return res.status(400).json({ error: "Invalid JSON" });
-    }
-    if (err)
-      reqLogger.error("Unhandled error", {
-        error: err.message,
-        stack: err.stack,
-      });
-    res.status(500).end();
-  });
-
   // Track if we're already shutting down to prevent multiple calls
   let isShuttingDown = false;
 
@@ -184,6 +155,35 @@
   //register API routes
   require("./api/api-routes")(app);
   logger.info("API routes initialized");
+
+  // Error handler — must be registered AFTER routes to catch route errors
+  app.use((err, req, res, next) => {
+    const reqLogger = req.logger || logger;
+
+    // Handle payload too large errors
+    if (err.type === "entity.too.large") {
+      reqLogger.warn("Request payload too large", {
+        ip: req.ip,
+        path: req.path,
+        limit: payloadLimit,
+      });
+      return res.status(413).json({ error: "Payload too large" });
+    }
+    // Handle JSON parse errors
+    if (err instanceof SyntaxError && err.status === 400 && "body" in err) {
+      reqLogger.warn("Invalid JSON in request body", {
+        ip: req.ip,
+        path: req.path,
+      });
+      return res.status(400).json({ error: "Invalid JSON" });
+    }
+    if (err)
+      reqLogger.error("Unhandled error", {
+        error: err.message,
+        stack: err.stack,
+      });
+    res.status(500).end();
+  });
 
   const serverPort = parseInt(process.env.PORT || port || "3000");
   app.set("port", serverPort);

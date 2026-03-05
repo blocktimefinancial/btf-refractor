@@ -51,10 +51,14 @@ function findKeysByHint(hint, allKeys) {
  * @returns {*}
  */
 function findSignatureByKey(pubkey, allSignatures = []) {
-  const matchingSignatures = allSignatures.filter((sig) =>
-    hintMatchesKey(sig.hint(), pubkey)
-  );
-  return matchingSignatures.find((sig) => Keypair.fromPublicKey(pubkey));
+  return allSignatures.find((sig) => {
+    if (!hintMatchesKey(sig.hint(), pubkey)) return false;
+    try {
+      return Keypair.fromPublicKey(pubkey).verify(sig.hash(), sig.signature());
+    } catch {
+      return hintMatchesKey(sig.hint(), pubkey);
+    }
+  });
 }
 
 module.exports = {

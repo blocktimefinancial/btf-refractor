@@ -16,6 +16,7 @@ const {
   getBlockchainConfig,
   getNetworkConfig,
 } = require("../blockchain-registry");
+const { standardError } = require("../std-error");
 const logger = require("../../utils/logger").forComponent("tx-submitter");
 
 /**
@@ -31,7 +32,7 @@ async function submitEvmTransaction(txInfo) {
   if (!networkConfig) {
     throw Object.assign(
       new Error(`Unknown network: ${blockchain}/${networkName}`),
-      { status: 400 }
+      { status: 400 },
     );
   }
 
@@ -42,9 +43,9 @@ async function submitEvmTransaction(txInfo) {
   if (!rpcUrl) {
     throw Object.assign(
       new Error(
-        `No RPC endpoint configured for ${blockchain}/${networkName}. Set ${blockchain.toUpperCase()}_RPC_URL environment variable.`
+        `No RPC endpoint configured for ${blockchain}/${networkName}. Set ${blockchain.toUpperCase()}_RPC_URL environment variable.`,
       ),
-      { status: 501 }
+      { status: 501 },
     );
   }
 
@@ -153,17 +154,12 @@ async function submitTransaction(txInfo) {
       // Check if blockchain is recognized in registry (but submission not implemented)
       const blockchainConfig = getBlockchainConfig(blockchain);
       if (blockchainConfig) {
-        const error = new Error(
-          `Transaction submission not yet implemented for blockchain: ${blockchain}`
+        throw standardError(
+          501,
+          `Transaction submission not yet implemented for blockchain: ${blockchain}`,
         );
-        error.name = "NotImplementedError";
-        error.status = 501;
-        throw error;
       } else {
-        const error = new Error(`Unsupported blockchain: ${blockchain}`);
-        error.name = "UnsupportedBlockchainError";
-        error.status = 400;
-        throw error;
+        throw standardError(400, `Unsupported blockchain: ${blockchain}`);
       }
   }
 }

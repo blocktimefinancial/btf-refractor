@@ -2,7 +2,7 @@ const createQueue = require("fastq");
 const EventEmitter = require("events");
 const logger = require("../../utils/logger").forComponent("queue");
 const config = require("../../app.config");
-const queueConfig = config.queue || {};
+const queueConfig = config.queue;
 
 /**
  * Enhanced FastQ wrapper with monitoring, metrics, and adaptive concurrency
@@ -12,13 +12,13 @@ class EnhancedQueue extends EventEmitter {
     super();
 
     this.options = {
-      concurrency: options.concurrency || 10,
-      maxConcurrency: options.maxConcurrency || 100,
-      minConcurrency: options.minConcurrency || 1,
-      retryAttempts: options.retryAttempts || 3,
-      retryDelay: options.retryDelay || 1000,
-      adaptiveConcurrency: options.adaptiveConcurrency || false,
-      metricsInterval: options.metricsInterval || 30000, // 30 seconds
+      concurrency: options.concurrency ?? 10,
+      maxConcurrency: options.maxConcurrency ?? 100,
+      minConcurrency: options.minConcurrency ?? 1,
+      retryAttempts: options.retryAttempts ?? 3,
+      retryDelay: options.retryDelay ?? 1000,
+      adaptiveConcurrency: options.adaptiveConcurrency ?? false,
+      metricsInterval: options.metricsInterval ?? 30000, // 30 seconds
       ...options,
     };
 
@@ -248,6 +248,8 @@ class EnhancedQueue extends EventEmitter {
       const metrics = this.getMetrics();
       this.emit("metrics", metrics);
     }, this.options.metricsInterval);
+    // Don't prevent process exit if the queue is the only thing keeping it alive
+    if (this.metricsInterval.unref) this.metricsInterval.unref();
   }
 
   /**
@@ -257,6 +259,7 @@ class EnhancedQueue extends EventEmitter {
     this.adaptiveInterval = setInterval(() => {
       this.adjustConcurrency();
     }, this.options.metricsInterval);
+    if (this.adaptiveInterval.unref) this.adaptiveInterval.unref();
   }
 
   /**
@@ -287,7 +290,7 @@ class EnhancedQueue extends EventEmitter {
       queueLength >
       ((queueConfig.bulkOps && queueConfig.bulkOps.queueThreshold) || 50)
     ) {
-      const bulkOps = queueConfig.bulkOps || {};
+      const bulkOps = queueConfig.bulkOps;
       // Only increase concurrency if success rate is very high and processing is fast
       if (
         queueLength > currentConcurrency * 3 &&
@@ -316,7 +319,7 @@ class EnhancedQueue extends EventEmitter {
     }
     // Normal operations - original logic but more conservative
     else {
-      const normalOps = queueConfig.normalOps || {};
+      const normalOps = queueConfig.normalOps;
       // Increase concurrency if queue is building up and success rate is excellent
       if (
         queueLength >

@@ -28,8 +28,8 @@ describe("Finalizer", () => {
       (txInfo) =>
         new Promise((resolve) => {
           callbacksExecuted.push(txInfo.hash);
-          setTimeout(() => resolve({ statusCode: 200 }), 10);
-        })
+          setTimeout(() => resolve({ status: 200 }), 10);
+        }),
     );
 
     setSubmitTransactionCallback(
@@ -37,7 +37,7 @@ describe("Finalizer", () => {
         new Promise((resolve) => {
           transactionsSubmitted.push(txInfo.hash);
           setTimeout(() => resolve({ result: "ok" }), 10);
-        })
+        }),
     );
 
     // Transaction with submit only
@@ -139,21 +139,24 @@ describe("Finalizer", () => {
       return transactionsSubmitted.length >= 2 && callbacksExecuted.length >= 2;
     }, 10000);
 
+    // Allow async finalization (status updates) to settle
+    await new Promise((resolve) => setTimeout(resolve, 200));
+
     // Verify submitted transactions
     expect(transactionsSubmitted).toContain(
-      "89d6c423a51e030b392f0e7505e9f3b66be11cb1477aecda79a34e5ae61060e4"
+      "89d6c423a51e030b392f0e7505e9f3b66be11cb1477aecda79a34e5ae61060e4",
     );
     expect(transactionsSubmitted).toContain(
-      "b41593701fd2abd7083005f341539cdabd9ca20061da59af9018b060d995f30e"
+      "b41593701fd2abd7083005f341539cdabd9ca20061da59af9018b060d995f30e",
     );
     expect(transactionsSubmitted.length).toBe(2);
 
     // Verify callbacks executed
     expect(callbacksExecuted).toContain(
-      "d7e4f7cb585b517ec198afcb5f8501ac8aafda64d43150e2852de37cd577c772"
+      "d7e4f7cb585b517ec198afcb5f8501ac8aafda64d43150e2852de37cd577c772",
     );
     expect(callbacksExecuted).toContain(
-      "b41593701fd2abd7083005f341539cdabd9ca20061da59af9018b060d995f30e"
+      "b41593701fd2abd7083005f341539cdabd9ca20061da59af9018b060d995f30e",
     );
     expect(callbacksExecuted.length).toBe(2);
 
@@ -164,24 +167,24 @@ describe("Finalizer", () => {
     const processedHashes = processedTxs.map((tx) => tx.hash).sort();
 
     expect(processedHashes).toContain(
-      "89d6c423a51e030b392f0e7505e9f3b66be11cb1477aecda79a34e5ae61060e4"
+      "89d6c423a51e030b392f0e7505e9f3b66be11cb1477aecda79a34e5ae61060e4",
     );
     expect(processedHashes).toContain(
-      "d7e4f7cb585b517ec198afcb5f8501ac8aafda64d43150e2852de37cd577c772"
+      "d7e4f7cb585b517ec198afcb5f8501ac8aafda64d43150e2852de37cd577c772",
     );
     expect(processedHashes).toContain(
-      "b41593701fd2abd7083005f341539cdabd9ca20061da59af9018b060d995f30e"
+      "b41593701fd2abd7083005f341539cdabd9ca20061da59af9018b060d995f30e",
     );
 
     // Verify pending transactions were NOT processed
     const pendingTx = await storageLayer.dataProvider.findTransaction(
-      "e59a325bad4dec41bdbee7c172663164c98d768ce6861c3ea6f4c5988ee98d94"
+      "e59a325bad4dec41bdbee7c172663164c98d768ce6861c3ea6f4c5988ee98d94",
     );
     expect(pendingTx.status).toBe("pending");
 
     // Verify future minTime transaction was NOT processed
     const futureTx = await storageLayer.dataProvider.findTransaction(
-      "e59a325bad4dec41bdbee7c172663164c98d768ce6861c3ea6f4c5988ee98d95"
+      "e59a325bad4dec41bdbee7c172663164c98d768ce6861c3ea6f4c5988ee98d95",
     );
     expect(futureTx.status).toBe("ready"); // still ready, not processed
   });

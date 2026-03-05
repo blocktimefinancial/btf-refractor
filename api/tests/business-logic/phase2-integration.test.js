@@ -180,11 +180,9 @@ jest.mock("../../business-logic/hsm-signing-adapter", () => {
     createKey: mockHsmCreateKey,
     healthCheck: mockHsmHealthCheck,
     sign: mockHsmSign,
-    _hsmKeyStore: {
-      getKeyMetadata: mockGetKeyMetadata,
-      rotateKey: mockRotateKey,
-      disableKey: mockDisableKey,
-    },
+    getKeyMetadata: mockGetKeyMetadata,
+    rotateKey: mockRotateKey,
+    disableKey: mockDisableKey,
     dbName: "refractor",
   }));
   MockAdapter.isSupported = jest.fn((chain) =>

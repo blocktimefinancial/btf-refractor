@@ -194,37 +194,22 @@ class TxModel {
   updatedAt = null;
 
   // ============================================================================
-  // Helper Methods
+  // Helper Methods — defined on the Mongoose schema (schemas/tx-schema.js)
   // ============================================================================
-
-  /**
-   * Check if this is a legacy Stellar transaction.
-   * @returns {Boolean}
-   */
-  isLegacyStellar() {
-    return this.xdr !== null && this.network !== null;
-  }
-
-  /**
-   * Get the effective payload (xdr for legacy, payload for new).
-   * @returns {String|null}
-   */
-  getPayload() {
-    return this.payload || this.xdr;
-  }
-
-  /**
-   * Get the effective network name.
-   * @returns {String|null}
-   */
-  getNetworkName() {
-    if (this.networkName) return this.networkName;
-    if (this.network !== null) {
-      const networkMap = { 0: "public", 1: "testnet", 2: "futurenet" };
-      return networkMap[this.network] || null;
-    }
-    return null;
-  }
+  //
+  // The following methods are available on Mongoose documents but intentionally
+  // NOT duplicated here to maintain a single source of truth:
+  //
+  //   isLegacyStellar()  — Check if this is a legacy Stellar transaction
+  //   getPayload()       — Get the effective payload (xdr for legacy, payload for new)
+  //   getNetworkName()   — Get the effective network name
+  //   isExpired()        — Check if the transaction has expired
+  //   isReady()          — Check if the transaction is ready for submission
+  //   addSignature()     — Add a signature (with auto-status update)
+  //
+  // Static query helpers on the Mongoose model:
+  //   findReady(), findExpired(), findByBlockchain(), findReadyByBlockchain()
+  //
 }
 
 module.exports = TxModel;

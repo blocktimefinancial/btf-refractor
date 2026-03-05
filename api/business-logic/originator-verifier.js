@@ -9,6 +9,7 @@
  */
 
 const { getHandler, hasHandler } = require("./handlers/handler-factory");
+const { isEvmBlockchain } = require("./handlers/evm-handler");
 const { standardError } = require("./std-error");
 const logger = require("../utils/logger").forComponent("originator-verifier");
 
@@ -44,7 +45,7 @@ function verifyOriginatorSignature(
   blockchain,
   originator,
   originatorSignature,
-  hash
+  hash,
 ) {
   if (!originator || !originatorSignature) {
     return false;
@@ -112,23 +113,6 @@ function decodeSignature(blockchain, signature) {
 }
 
 /**
- * Check if a blockchain is EVM-compatible
- * @param {string} blockchain - Blockchain identifier
- * @returns {boolean}
- */
-function isEvmBlockchain(blockchain) {
-  const evmChains = [
-    "ethereum",
-    "polygon",
-    "arbitrum",
-    "optimism",
-    "base",
-    "avalanche",
-  ];
-  return evmChains.includes(blockchain);
-}
-
-/**
  * Validate originator fields on a transaction request
  * Throws an error if originator is provided but invalid
  * @param {string} blockchain - Blockchain identifier
@@ -145,7 +129,7 @@ function validateOriginator(
   originator,
   originatorSignature,
   hash,
-  options = {}
+  options = {},
 ) {
   const { requireOriginator = false, verifySignature = true } = options;
 
@@ -163,7 +147,7 @@ function validateOriginator(
   if (!isValidOriginator(blockchain, originator)) {
     throw standardError(
       400,
-      `Invalid originator key format for blockchain '${blockchain}'`
+      `Invalid originator key format for blockchain '${blockchain}'`,
     );
   }
 
@@ -173,7 +157,7 @@ function validateOriginator(
       blockchain,
       originator,
       originatorSignature,
-      hash
+      hash,
     );
 
     if (!isValid) {
@@ -214,7 +198,7 @@ function checkOriginatorStatus(txInfo) {
     blockchain,
     originator,
     originatorSignature,
-    hash
+    hash,
   );
 
   return { hasOriginator: true, isVerified };

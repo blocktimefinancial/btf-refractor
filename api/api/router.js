@@ -97,7 +97,7 @@ module.exports = {
     //register pre-flight request handler
     if (method.toLowerCase() !== "get") {
       app.options(route, [corsMiddleware], function (req, res) {
-        res.text(method.toUpperCase());
+        res.end(method.toUpperCase());
       });
     }
   },

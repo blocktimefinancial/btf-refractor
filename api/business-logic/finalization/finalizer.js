@@ -12,13 +12,13 @@ class Finalizer {
   constructor() {
     // Initialize enhanced queue with monitoring and adaptive concurrency
     this.finalizerQueue = new EnhancedQueue(this.processTxWrapper.bind(this), {
-      concurrency: config.parallelTasks || 50,
-      maxConcurrency: config.maxParallelTasks || 100,
-      minConcurrency: config.minParallelTasks || 1,
-      adaptiveConcurrency: config.adaptiveConcurrency || true,
-      retryAttempts: config.retryAttempts || 3,
-      retryDelay: config.retryDelay || 1000,
-      metricsInterval: config.metricsInterval || 30000,
+      concurrency: config.parallelTasks ?? 50,
+      maxConcurrency: config.maxParallelTasks ?? 100,
+      minConcurrency: config.minParallelTasks ?? 1,
+      adaptiveConcurrency: config.adaptiveConcurrency ?? true,
+      retryAttempts: config.retryAttempts ?? 3,
+      retryDelay: config.retryDelay ?? 1000,
+      metricsInterval: config.metricsInterval ?? 30000,
     });
 
     // Set up queue event listeners for monitoring
@@ -32,6 +32,9 @@ class Finalizer {
   tickerTimeout = config.tickerTimeout;
 
   processorTimerHandler = -1;
+
+  /** @type {boolean} Set to true during stop() to prevent race conditions */
+  stopping = false;
 
   /**
    * Set up monitoring for the enhanced queue
@@ -78,6 +81,7 @@ class Finalizer {
   }
 
   async scheduleTransactionsBatch() {
+    if (this.stopping) return;
     let foundCount = 0;
     try {
       const now = getUnixTimestamp();
@@ -87,10 +91,10 @@ class Finalizer {
       });
 
       //get transactions ready to be submitted
-      const cursor = await storageLayer.dataProvider.listTransactions({
-        status: "ready",
-        minTime: { $lte: now },
-      });
+      const cursor = await storageLayer.dataProvider.listTransactions(
+        { status: "ready", minTime: { $lte: now } },
+        { limit: this.targetQueueSize },
+      );
 
       for await (let txInfo of cursor) {
         foundCount++;
@@ -137,6 +141,9 @@ class Finalizer {
       // No transactions found, use normal interval
       nextTimeout = this.tickerTimeout;
     }
+
+    // Don't schedule next batch if stop() was called during this execution
+    if (this.stopping) return;
 
     logger.debug("Scheduling next batch", {
       nextTimeout,
@@ -355,6 +362,7 @@ class Finalizer {
   }
 
   async stop() {
+    this.stopping = true;
     clearTimeout(this.processorTimerHandler);
     this.processorTimerHandler = 0;
     //clear the pending queue and wait for completion

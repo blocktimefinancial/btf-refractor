@@ -2,6 +2,13 @@ class DataProvider {
   async init() {}
 
   /**
+   * Close database connections and release resources.
+   * Subclasses should override if they hold open connections.
+   * @returns {Promise<void>}
+   */
+  async close() {}
+
+  /**
    * Store transaction.
    * @param {TxModel} txModel
    * @returns {Promise}
@@ -22,9 +29,11 @@ class DataProvider {
   /**
    * Get transactions iterator filtered by
    * @param {Object} filter
+   * @param {Object} [options]
+   * @param {number} [options.limit] - Maximum number of results
    * @return {TxModelsCursor}
    */
-  listTransactions(filter) {
+  listTransactions(filter, options) {
     throw new Error("Not implemented");
   }
 
@@ -51,7 +60,7 @@ class DataProvider {
     hash,
     newStatus,
     expectedCurrentStatus = undefined,
-    error = null
+    error = null,
   ) {
     const update = {
       status: newStatus,
