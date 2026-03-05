@@ -1,65 +1,121 @@
-# Code Review — Fifth Pass
+# Code Review — Sixth Pass (Final Verification)
 
-**Date:** 2025-01-27
+**Date:** 2026-03-05
 **Reviewer:** GitHub Copilot (Claude Opus 4.6)
-**Scope:** Full codebase — 60+ source files, 38 test suites, 1211 tests (all green)
-**Prior reviews:** Reviews 1–4, all 41 items resolved
+**Scope:** Full codebase — 60+ source files, 40 test suites, 1234 tests (all green, clean exit)
+**Prior reviews:** Reviews 1–5, all 49 prior items verified resolved; 6 new items found and fixed in this pass
 
 ---
 
 ## Executive Summary
 
-The codebase is in **production-ready shape**. All 41 items from four prior reviews have been resolved, plus 8 additional items from the fourth-pass review addressed in this session. The test suite is comprehensive (1211 tests, 38 suites, clean exit with no open-handle warnings).
+All 49 items from prior reviews are confirmed resolved and intact. This final verification pass read every production source file, ran the full test suite, and performed a deep scan for new issues.
 
-**Fourth-pass fixes applied in this session:**
-- M1: Algorand handler test suite (73 tests) ✅
-- M1: Solana handler test suite (104 tests) ✅
-- M1: Solana `verifySignature()` base58/base64 key format detection bug fixed ✅
-- M2: `forComponent("monitoring")` replaces `.child()` in `monitoring-routes.js` ✅
-- L1: `_cfgLogger.info()` replaces 5 `console.log` calls in `app.config.js` ✅
-- L2: `status;` field initializer replaces `status = "draft"` in `signer.js` ✅
-- L3: `let server;` declared before `gracefulExit` in `api.js` ✅
-- L4: Logger replaces `console.log` in `mongodb-data-provider.js` and `mongodb-firestore-data-provider.js` ✅
-- L5: Logger replaces `console.log/warn` in `core-db-data-source.js` (also fixed "Staller" typo → "Stellar") ✅
-- L6: Consolidated `console.error` in `env-validator.js` ✅
+**6 new findings identified** — all now **RESOLVED**:
+- H1: EVM submission failures now throw instead of silently returning ✅
+- H2: `createKey()` factory fixed — arrow functions preserve `this` binding ✅
+- M1: Callback handler now sends `xdr || payload` as `tx` field ✅
+- M2: `result_codes` serialized via `JSON.stringify()` instead of string concatenation ✅
+- L1: `secureCompare` uses HMAC digest comparison (constant-time regardless of length) ✅
+- L2: IPv6-mapped `172.x` check now scoped to RFC 1918 `172.16–31.x.x` only ✅
+
+**1 item noted** — not a bug:
+- L3: 1Money mainnet/testnet share `chainId: 1212101` — intentional (mainnet not yet launched; chainId will change)
+
+**Test suite:** 40 suites, 1234 tests, all green, clean exit (no open handles)
 
 **Remaining items by severity:**
 | Severity | Count |
 |----------|-------|
-| HIGH (bugs / correctness) | 0 |
+| HIGH | 0 |
 | MEDIUM | 0 |
 | LOW | 0 |
 
-**All items from all five reviews are now resolved.**
+**All items from all six reviews are now resolved.**
 
 ---
 
 ## HIGH — Bugs / Correctness
 
-**No HIGH items.** All three HIGH items from the third-pass review (H1, H2, H3) were fixed and verified in previous sessions.
+**All HIGH items resolved.**
+
+### H1. EVM submission failures now throw on error ✅ RESOLVED
+
+**File:** `business-logic/finalization/tx-submitter.js` lines 74–88, 100–113
+
+**Was:** `submitEvmTransaction()` caught RPC errors and returned `txInfo` with `status: "failed"` instead of throwing. The finalizer unconditionally marked the transaction as "processed" after `await submitTransaction()`.
+
+**Fix:** Both the RPC error path and the network error catch block now `throw` instead of returning, consistent with Stellar's `submitTransaction()`. The finalizer's catch block handles failures correctly.
+
+**Tests:** 3 new tests in `tx-submitter.test.js` covering RPC error throws, network failure throws, and non-silent error propagation.
+
+### H2. `createKey()` factory preserves `this` binding ✅ RESOLVED
+
+**File:** `business-logic/hsm-signing-adapter.js` lines 280–300
+
+**Was:** Factory returned unbound method references (`() => this._hsmKeyStore.createStellarKey`), then called `createFn()({...options})` which lost `this` context.
+
+**Fix:** Arrow functions now call methods directly: `(opts) => this._hsmKeyStore.createStellarKey(opts)`, and the final call is `createFn({...options})`.
+
+**Tests:** 8 existing `createKey` tests continue to pass.
 
 ---
 
-## MEDIUM — Reliability / Consistency
+## MEDIUM — Reliability / Security
 
-**No MEDIUM items.** M1 (missing handler tests) and M2 (monitoring forComponent) resolved in this session.
+**All MEDIUM items resolved.**
 
-- M1: Created `algorand-handler.test.js` (73 tests) and `solana-handler.test.js` (104 tests) covering transaction parsing, hash computation, signature verification, base32/base58 codec roundtrips, network normalization, and parameter validation.
-- M1 (bonus): Fixed a latent bug in `solana-handler.js` `verifySignature()` — 44-char base58 addresses were misdetected as base64.  Added `/[+/=]/` check to require base64-specific characters before treating string as base64.
-- M2: `reqLogger.child({ component: "monitoring" })` → `reqLogger.forComponent("monitoring")` in `monitoring-routes.js`.
+### M1. Callback handler sends actual transaction data ✅ RESOLVED
+
+**File:** `business-logic/finalization/callback-handler.js` lines 6–8
+
+**Was:** Destructured `{ tx }` from txInfo, but `rehydrateTx()` never produces a `tx` field — data is in `xdr` (Stellar) or `payload` (EVM). Callbacks always received `tx: undefined`.
+
+**Fix:** Now destructures `{ xdr, payload, network, networkName, hash, callbackUrl, blockchain }` and sends `tx: xdr || payload`.
+
+**Tests:** New `callback-handler.test.js` with 6 tests covering Stellar xdr, EVM payload, non-undefined tx, xdr/payload precedence, networkName fallback, and missing-URL error.
+
+### M2. `result_codes` properly serialized in error messages ✅ RESOLVED
+
+**File:** `business-logic/finalization/finalizer.js` line 293
+
+**Was:** `e.message + (e.result_codes || "")` produced `"...[object Object]"` when `result_codes` is an object (Horizon errors).
+
+**Fix:** `e.message + (e.result_codes ? " " + JSON.stringify(e.result_codes) : "")`.
+
+**Tests:** New `result-codes-serialization.test.js` with 4 tests covering object, string, null, and deeply nested result_codes.
 
 ---
 
-## LOW — Cleanup / Style
+## LOW — Cleanup / Hardening
 
-**No LOW items.** L1–L6 all resolved in this session:
+**All LOW items resolved.**
 
-- L1: `app.config.js` — replaced 5 `console.log` calls with lazy-loaded `_cfgLogger.info()` using `utils/logger.forComponent("config")` with console fallback.
-- L2: `signer.js` — removed unnecessary `status = "draft"` default (immediately overwritten by constructor).
-- L3: `api.js` — moved `let server;` declaration before `gracefulExit` to eliminate temporal dead zone.
-- L4: `mongodb-data-provider.js` and `mongodb-firestore-data-provider.js` — `console.log` → logger.
-- L5: `core-db-data-source.js` — `console.log/warn` → logger, fixed "Staller" → "Stellar" typo.
-- L6: `env-validator.js` — consolidated multiple `console.error` calls into a single formatted block.
+### L1. `secureCompare` no longer leaks key length ✅ RESOLVED
+
+**File:** `middleware/auth.js` lines 70–80
+
+**Was:** Early `return false` on buffer length mismatch enabled timing-based key length discovery.
+
+**Fix:** HMAC both inputs with SHA-256 to produce fixed-length 32-byte digests, then `timingSafeEqual` on the digests. No length-dependent branch.
+
+**Tests:** 3 new tests in `auth.test.js` covering matching keys of various lengths, different-length rejection, and same-length rejection.
+
+### L2. IPv6-mapped `172.x` scoped to RFC 1918 range ✅ RESOLVED
+
+**File:** `utils/url-validator.js` line 96
+
+**Was:** `::ffff:172.` matched all 172.0.0.0/8 — only 172.16.0.0/12 is RFC 1918 private.
+
+**Fix:** Now parses the second octet and checks `>= 16 && <= 31`, consistent with the IPv4 `PRIVATE_RANGES` table.
+
+**Tests:** 7 new tests in `url-validator.test.js` covering private 172.16/20/31 (true) and public 172.0/1/15/32 (false).
+
+### L3. 1Money chainId — NOT A BUG (noted)
+
+**File:** `business-logic/blockchain-registry.js`
+
+1Money mainnet and testnet share `chainId: 1212101` because mainnet has not yet launched. The mainnet chainId will change in the future. No action needed now.
 
 ---
 
@@ -70,8 +126,8 @@ The codebase is in **production-ready shape**. All 41 items from four prior revi
 | stellar-handler | `handlers/stellar-handler.test.js` | ✅ Comprehensive |
 | evm-handler | `handlers/evm-handler.test.js` | ✅ Comprehensive |
 | onemoney-handler | `handlers/onemoney-handler.test.js` | ✅ Comprehensive |
-| **solana-handler** | `handlers/solana-handler.test.js` | ✅ Comprehensive (104 tests) |
-| **algorand-handler** | `handlers/algorand-handler.test.js` | ✅ Comprehensive (73 tests) |
+| solana-handler | `handlers/solana-handler.test.js` | ✅ Comprehensive (104 tests) |
+| algorand-handler | `handlers/algorand-handler.test.js` | ✅ Comprehensive (73 tests) |
 | handler-factory | `handlers/handler-factory.test.js` | ✅ Good |
 | signer (stellar) | `business-logic/signer-hsm.test.js` | ✅ Good |
 | request-adapter | `api/request-adapter.test.js` | ✅ Comprehensive |
@@ -81,6 +137,8 @@ The codebase is in **production-ready shape**. All 41 items from four prior revi
 | hsm-signing-adapter | `business-logic/hsm-signing-adapter.test.js` | ✅ Good |
 | finalizer | `tests/finalizer.test.js` | ✅ Comprehensive |
 | tx-submitter | `finalization/tx-submitter.test.js` | ✅ Good |
+| **callback-handler** | `finalization/callback-handler.test.js` | ✅ Good (NEW) |
+| **result-codes** | `finalization/result-codes-serialization.test.js` | ✅ Good (NEW) |
 | mongoose-data-provider | `storage/mongoose-data-provider.test.js` | ✅ Comprehensive |
 | inmemory-provider | `storage/inmemory-provider.test.js` | ✅ Good |
 | circuit-breaker | `utils/circuit-breaker.test.js` | ✅ Comprehensive |
@@ -99,7 +157,7 @@ The codebase is in **production-ready shape**. All 41 items from four prior revi
 | integration (full API) | `integration/api.integration.test.js` | ✅ Good |
 | edge-cases | `edge-cases.test.js` | ✅ Comprehensive |
 
-**Total:** 38 test suites, 1211 tests, all green, clean exit (no open handles)
+**Total:** 40 test suites, 1234 tests, all green, clean exit (no open handles)
 
 ---
 

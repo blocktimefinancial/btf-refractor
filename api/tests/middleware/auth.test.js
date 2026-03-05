@@ -133,4 +133,50 @@ describe("Authentication Middleware", () => {
       });
     });
   });
+
+  describe("secureCompare", () => {
+    // Import via internal access or test behavior through the middleware
+    const crypto = require("crypto");
+
+    it("should accept matching keys regardless of length", () => {
+      // Short key
+      process.env.ADMIN_API_KEY = "ab";
+      mockReq.headers["x-admin-api-key"] = "ab";
+      const mw1 = requireAdminAuth();
+      mw1(mockReq, mockRes, mockNext);
+      expect(mockNext).toHaveBeenCalledTimes(1);
+
+      // Long key
+      mockNext.mockClear();
+      mockRes.status.mockClear();
+      const longKey = "a".repeat(256);
+      process.env.ADMIN_API_KEY = longKey;
+      mockReq.headers["x-admin-api-key"] = longKey;
+      const mw2 = requireAdminAuth();
+      mw2(mockReq, mockRes, mockNext);
+      expect(mockNext).toHaveBeenCalledTimes(1);
+    });
+
+    it("should reject keys of different lengths", () => {
+      process.env.ADMIN_API_KEY = "short";
+      mockReq.headers["x-admin-api-key"] = "much-longer-key";
+
+      const middleware = requireAdminAuth();
+      middleware(mockReq, mockRes, mockNext);
+
+      expect(mockRes.status).toHaveBeenCalledWith(403);
+      expect(mockNext).not.toHaveBeenCalled();
+    });
+
+    it("should reject different keys of same length", () => {
+      process.env.ADMIN_API_KEY = "aaaa";
+      mockReq.headers["x-admin-api-key"] = "bbbb";
+
+      const middleware = requireAdminAuth();
+      middleware(mockReq, mockRes, mockNext);
+
+      expect(mockRes.status).toHaveBeenCalledWith(403);
+      expect(mockNext).not.toHaveBeenCalled();
+    });
+  });
 });

@@ -278,16 +278,16 @@ class HsmSigningAdapter {
     const normalized = blockchain.toLowerCase();
 
     const createFn = {
-      stellar: () => this._hsmKeyStore.createStellarKey,
-      ethereum: () => this._hsmKeyStore.createEthereumKey,
-      onemoney: () => this._hsmKeyStore.createEthereumKey, // EVM-compatible secp256k1
-      solana: () => this._hsmKeyStore.createSolanaKey,
-      algorand: () => this._hsmKeyStore.createAlgorandKey,
-      polygon: () => this._hsmKeyStore.createEthereumKey,
-      arbitrum: () => this._hsmKeyStore.createEthereumKey,
-      optimism: () => this._hsmKeyStore.createEthereumKey,
-      base: () => this._hsmKeyStore.createEthereumKey,
-      avalanche: () => this._hsmKeyStore.createEthereumKey,
+      stellar: (opts) => this._hsmKeyStore.createStellarKey(opts),
+      ethereum: (opts) => this._hsmKeyStore.createEthereumKey(opts),
+      onemoney: (opts) => this._hsmKeyStore.createEthereumKey(opts), // EVM-compatible secp256k1
+      solana: (opts) => this._hsmKeyStore.createSolanaKey(opts),
+      algorand: (opts) => this._hsmKeyStore.createAlgorandKey(opts),
+      polygon: (opts) => this._hsmKeyStore.createEthereumKey(opts),
+      arbitrum: (opts) => this._hsmKeyStore.createEthereumKey(opts),
+      optimism: (opts) => this._hsmKeyStore.createEthereumKey(opts),
+      base: (opts) => this._hsmKeyStore.createEthereumKey(opts),
+      avalanche: (opts) => this._hsmKeyStore.createEthereumKey(opts),
     }[normalized];
 
     if (!createFn) {
@@ -296,7 +296,7 @@ class HsmSigningAdapter {
 
     logger.info("Creating HSM-managed key", { blockchain: normalized });
 
-    return createFn()({
+    return createFn({
       ...options,
       dbName: this.dbName,
       blockchain: normalized,

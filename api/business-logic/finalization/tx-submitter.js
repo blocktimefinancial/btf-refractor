@@ -77,12 +77,9 @@ async function submitEvmTransaction(txInfo) {
         error: result.error,
       });
 
-      txInfo.status = "failed";
-      txInfo.error = {
-        code: result.error.code,
-        message: result.error.message,
-      };
-      return txInfo;
+      const err = new Error(result.error.message || "EVM RPC error");
+      err.code = result.error.code;
+      throw err;
     }
 
     // Success - result.result contains the transaction hash
@@ -104,11 +101,7 @@ async function submitEvmTransaction(txInfo) {
       error: error.message,
     });
 
-    txInfo.status = "failed";
-    txInfo.error = {
-      message: error.message,
-    };
-    return txInfo;
+    throw error;
   }
 }
 

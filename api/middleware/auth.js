@@ -72,14 +72,9 @@ function secureCompare(a, b) {
     return false;
   }
 
-  const bufA = Buffer.from(a);
-  const bufB = Buffer.from(b);
-
-  if (bufA.length !== bufB.length) {
-    return false;
-  }
-
-  return crypto.timingSafeEqual(bufA, bufB);
+  // HMAC both values to fixed-length digests to avoid leaking length via timing
+  const hmac = (v) => crypto.createHmac("sha256", "refractor-compare-salt").update(v).digest();
+  return crypto.timingSafeEqual(hmac(a), hmac(b));
 }
 
 /**

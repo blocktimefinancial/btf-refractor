@@ -290,7 +290,7 @@ class Finalizer {
 
       // Enhanced error information capture
       const errorInfo = {
-        message: e.message + (e.result_codes || "") || e.toString(),
+        message: e.message + (e.result_codes ? " " + JSON.stringify(e.result_codes) : "") || e.toString(),
         stack: e.stack,
         timestamp: new Date().toISOString(),
         hash: txInfo.hash,

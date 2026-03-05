@@ -4,8 +4,8 @@ const { validateCallbackUrl } = require("../../utils/url-validator");
 const callbackConfig = config.callback;
 
 let callbackHandler = function (txInfo) {
-  const { tx, network, hash, callbackUrl } = txInfo;
-  return axios.post(callbackUrl, { tx, hash, network });
+  const { xdr, payload, network, networkName, hash, callbackUrl, blockchain } = txInfo;
+  return axios.post(callbackUrl, { tx: xdr || payload, hash, network: network || networkName, blockchain });
 };
 
 /**

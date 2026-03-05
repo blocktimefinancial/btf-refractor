@@ -93,7 +93,10 @@ function isPrivateIPv6(ip) {
     normalized.startsWith("::ffff:127.") || // IPv4-mapped loopback
     normalized.startsWith("::ffff:10.") || // IPv4-mapped private
     normalized.startsWith("::ffff:192.168.") || // IPv4-mapped private
-    normalized.startsWith("::ffff:172.") // IPv4-mapped private (partial)
+    (normalized.startsWith("::ffff:172.") && (() => {
+      const octet2 = parseInt(normalized.split(".")[1], 10);
+      return octet2 >= 16 && octet2 <= 31;
+    })()) // IPv4-mapped private 172.16-31.x.x (RFC 1918)
   );
 }
 

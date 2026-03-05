@@ -53,6 +53,29 @@ describe("url-validator", () => {
       },
     );
 
+    it.each([
+      "::ffff:172.16.0.1",  // RFC 1918 low boundary
+      "::ffff:172.31.255.255",  // RFC 1918 high boundary
+      "::ffff:172.20.0.1",  // RFC 1918 middle
+    ])(
+      "returns true for private IPv4-mapped 172.x %s",
+      (ip) => {
+        expect(isPrivateIPv6(ip)).toBe(true);
+      },
+    );
+
+    it.each([
+      "::ffff:172.1.2.3",   // public 172.1.x.x
+      "::ffff:172.15.0.1",  // just below RFC 1918 range
+      "::ffff:172.32.0.1",  // just above RFC 1918 range
+      "::ffff:172.0.0.1",   // public 172.0.x.x
+    ])(
+      "returns false for public IPv4-mapped 172.x %s",
+      (ip) => {
+        expect(isPrivateIPv6(ip)).toBe(false);
+      },
+    );
+
     it.each(["2001:4860:4860::8888", "2607:f8b0:4004:800::200e"])(
       "returns false for public IPv6 %s",
       (ip) => {
