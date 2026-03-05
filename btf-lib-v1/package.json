@@ -1,7 +1,0 @@
-{
-  "name": "btf-lib-v1",
-  "version": "0.0.1-stub",
-  "description": "Stub placeholder for btf-lib-v1 — replace with npm link or git submodule in production",
-  "private": true,
-  "main": "index.js"
-}
