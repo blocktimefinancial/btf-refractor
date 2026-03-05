@@ -19,6 +19,16 @@ const envConfig = {
         description: "MongoDB connection string",
         sensitive: true,
       },
+      {
+        name: "AZURE_MANAGED_HSM_URL",
+        description: "Azure Managed HSM URL (e.g., https://refractor-hsm.managedhsm.azure.net)",
+        sensitive: false,
+      },
+      {
+        name: "HSM_MASTER_KEK_NAME",
+        description: "HSM master Key Encryption Key name for envelope encryption",
+        sensitive: false,
+      },
     ],
   },
 
@@ -73,6 +83,68 @@ const envConfig = {
       name: "LOG_FILE",
       description: "Log file path (production only)",
       default: "",
+    },
+    // ── HSM / Confidential Computing ────────────────────────────
+    {
+      name: "HSM_SIGNING_ENABLED",
+      description: "Enable HSM-backed signing (true/false)",
+      default: "false",
+    },
+    {
+      name: "HSM_SIGNING_TIER",
+      description: "HSM signing tier: 'direct' (Tier 1) or 'envelope' (Tier 2)",
+      default: "envelope",
+    },
+    {
+      name: "HSM_KEK_VERSION",
+      description: "HSM master KEK version (for key rotation)",
+      default: "",
+    },
+    {
+      name: "HSM_WRAP_ALGORITHM",
+      description: "Key wrap algorithm (e.g., RSA-OAEP-256, AES-KW-256)",
+      default: "RSA-OAEP-256",
+    },
+    {
+      name: "HSM_SERVER_KEY_STELLAR",
+      description: "HSM key ID for Stellar finalization signing",
+      default: "",
+    },
+    {
+      name: "HSM_SERVER_KEY_SOLANA",
+      description: "HSM key ID for Solana finalization signing",
+      default: "",
+    },
+    {
+      name: "HSM_SERVER_KEY_ALGORAND",
+      description: "HSM key ID for Algorand finalization signing",
+      default: "",
+    },
+    {
+      name: "HSM_SERVER_KEY_ETHEREUM",
+      description: "HSM key ID for EVM finalization signing",
+      default: "",
+    },
+    {
+      name: "REQUIRE_CVM_ATTESTATION",
+      description: "Require CVM TEE attestation before HSM access (true/false). Defaults to true in production.",
+      default: "",
+    },
+    {
+      name: "USE_CONFIDENTIAL_COMPUTING",
+      description: "Enable Azure Confidential Computing features (true/false)",
+      default: "false",
+    },
+    {
+      name: "AZURE_ATTESTATION_URL",
+      description: "Azure Attestation Service URL (e.g., https://shared.eus.attest.azure.net)",
+      default: "",
+    },
+    {
+      name: "REDIS_URL",
+      description: "Azure Managed Redis connection URL for key metadata caching",
+      default: "",
+      sensitive: true,
     },
   ],
 };

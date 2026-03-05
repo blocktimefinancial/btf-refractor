@@ -36,6 +36,37 @@ const config = {
   feeMultiplier: process.env.FEE_MULTIPLIER
     ? parseInt(process.env.FEE_MULTIPLIER, 10)
     : baseConfig.feeMultiplier || 1, // Default to 1 if not set
+
+  // ── HSM / Confidential Computing Configuration ────────────────
+  hsm: {
+    enabled: process.env.HSM_SIGNING_ENABLED === "true",
+    tier: process.env.HSM_SIGNING_TIER || "envelope",
+    masterKekName: process.env.HSM_MASTER_KEK_NAME || "",
+    kekVersion: process.env.HSM_KEK_VERSION || "",
+    wrapAlgorithm: process.env.HSM_WRAP_ALGORITHM || "RSA-OAEP-256",
+    hsmUrl: process.env.AZURE_MANAGED_HSM_URL || "",
+    // Per-blockchain server key IDs for Tier 1 (finalization) signing
+    serverKeys: {
+      stellar: process.env.HSM_SERVER_KEY_STELLAR || "",
+      solana: process.env.HSM_SERVER_KEY_SOLANA || "",
+      algorand: process.env.HSM_SERVER_KEY_ALGORAND || "",
+      ethereum: process.env.HSM_SERVER_KEY_ETHEREUM || "",
+    },
+  },
+
+  confidentialComputing: {
+    enabled: process.env.USE_CONFIDENTIAL_COMPUTING === "true",
+    requireAttestation:
+      process.env.REQUIRE_CVM_ATTESTATION !== undefined
+        ? process.env.REQUIRE_CVM_ATTESTATION === "true"
+        : process.env.NODE_ENV === "production",
+    attestationUrl: process.env.AZURE_ATTESTATION_URL || "",
+  },
+
+  redis: {
+    url: process.env.REDIS_URL || "",
+    enabled: !!process.env.REDIS_URL,
+  },
 };
 
 // Log configuration details (without sensitive info)

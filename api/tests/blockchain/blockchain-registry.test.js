@@ -262,21 +262,23 @@ describe("Blockchain Registry", () => {
       expect(BLOCKCHAIN_REGISTRY.onemoney.name).toBe("1Money");
     });
 
-    it("should have base64 as default encoding", () => {
-      expect(getDefaultEncoding("onemoney")).toBe("base64");
+    it("should have json as default encoding", () => {
+      expect(getDefaultEncoding("onemoney")).toBe("json");
     });
 
-    it("should have ed25519 key format", () => {
+    it("should have secp256k1 key format", () => {
       const config = getBlockchainConfig("onemoney");
-      expect(config.keyFormat.type).toBe("ed25519");
+      expect(config.keyFormat.type).toBe("secp256k1");
+      expect(config.keyFormat.addressPrefix).toBe("0x");
     });
 
     it("should have mainnet network", () => {
       expect(isValidNetwork("onemoney", "mainnet")).toBe(true);
     });
 
-    it("should support base64 encoding", () => {
-      expect(isEncodingSupported("onemoney", "base64")).toBe(true);
+    it("should support json and hex encoding", () => {
+      expect(isEncodingSupported("onemoney", "json")).toBe(true);
+      expect(isEncodingSupported("onemoney", "hex")).toBe(true);
     });
   });
 
