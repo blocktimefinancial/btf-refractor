@@ -124,6 +124,15 @@ function originCallback(origin, callback) {
 /**
  * Default CORS options with blacklist support
  */
+// Load maxAge from config (fallback to 24 hours)
+let corsMaxAge = 86400;
+try {
+  const appConfig = require("../app.config");
+  corsMaxAge = (appConfig.cors && appConfig.cors.maxAge) || 86400;
+} catch {
+  /* config not available during early init */
+}
+
 const corsOptions = {
   optionsSuccessStatus: 200,
   origin: originCallback,
@@ -136,7 +145,7 @@ const corsOptions = {
     "X-Request-ID",
   ],
   exposedHeaders: ["X-Request-ID"],
-  maxAge: 86400, // 24 hours preflight cache
+  maxAge: corsMaxAge,
 };
 
 /**

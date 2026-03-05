@@ -1,6 +1,8 @@
 const createQueue = require("fastq");
 const EventEmitter = require("events");
 const logger = require("../../utils/logger").forComponent("queue");
+const config = require("../../app.config");
+const queueConfig = config.queue || {};
 
 /**
  * Enhanced FastQ wrapper with monitoring, metrics, and adaptive concurrency
@@ -32,12 +34,13 @@ class EnhancedQueue extends EventEmitter {
     };
 
     this.processingTimes = [];
-    this.maxProcessingTimesSamples = 100;
+    this.maxProcessingTimesSamples =
+      queueConfig.maxProcessingTimeSamples || 100;
 
     // Create the underlying fastq queue
     this.queue = createQueue(
       this.createWorkerWrapper(worker),
-      this.options.concurrency
+      this.options.concurrency,
     );
 
     // Set up monitoring
@@ -104,9 +107,13 @@ class EnhancedQueue extends EventEmitter {
             if (error.status === 429) {
               // For rate limits, use longer delays with more backoff
               delay = Math.min(
-                this.options.retryDelay * Math.pow(3, attempt - 1) +
-                  Math.random() * 2000,
-                30000 // Cap at 30 seconds
+                this.options.retryDelay *
+                  Math.pow(
+                    queueConfig.rateLimitBackoffMultiplier || 3,
+                    attempt - 1,
+                  ) +
+                  Math.random() * (queueConfig.rateLimitBackoffJitter || 2000),
+                queueConfig.rateLimitMaxDelay || 30000,
               );
               logger.warn("Rate limit detected, backing off", {
                 taskId,
@@ -116,8 +123,11 @@ class EnhancedQueue extends EventEmitter {
               // Temporarily reduce concurrency to ease pressure
               if (this.queue.concurrency > this.options.minConcurrency) {
                 const newConcurrency = Math.max(
-                  Math.floor(this.queue.concurrency * 0.7),
-                  this.options.minConcurrency
+                  Math.floor(
+                    this.queue.concurrency *
+                      (queueConfig.rateLimitConcurrencyFactor || 0.7),
+                  ),
+                  this.options.minConcurrency,
                 );
                 logger.warn("Reducing concurrency due to rate limiting", {
                   oldConcurrency: this.queue.concurrency,
@@ -129,7 +139,7 @@ class EnhancedQueue extends EventEmitter {
               // Standard exponential backoff with jitter for other errors
               delay =
                 this.options.retryDelay * Math.pow(2, attempt - 1) +
-                Math.random() * 1000;
+                Math.random() * (queueConfig.retryJitter || 1000);
             }
 
             setTimeout(attemptTask, delay);
@@ -264,52 +274,69 @@ class EnhancedQueue extends EventEmitter {
     let newConcurrency = currentConcurrency;
 
     // If we're seeing high error rates, be more conservative
-    if (errorRate > 0.1) {
+    if (errorRate > (queueConfig.adaptiveErrorRateThreshold || 0.1)) {
       newConcurrency = Math.max(
-        Math.floor(currentConcurrency * 0.8),
-        this.options.minConcurrency
+        Math.floor(
+          currentConcurrency * (queueConfig.concurrencyReductionFactor || 0.8),
+        ),
+        this.options.minConcurrency,
       );
     }
     // During bulk operations (large queue), be more conservative with scaling
-    else if (queueLength > 50) {
+    else if (
+      queueLength >
+      ((queueConfig.bulkOps && queueConfig.bulkOps.queueThreshold) || 50)
+    ) {
+      const bulkOps = queueConfig.bulkOps || {};
       // Only increase concurrency if success rate is very high and processing is fast
       if (
         queueLength > currentConcurrency * 3 &&
-        successRate > 0.98 &&
-        avgProcessingTime < 3000 &&
-        currentConcurrency < this.options.maxConcurrency * 0.7 // Cap at 70% of max during bulk ops
+        successRate > (bulkOps.successThreshold || 0.98) &&
+        avgProcessingTime < (bulkOps.maxProcessingTime || 3000) &&
+        currentConcurrency <
+          this.options.maxConcurrency * (bulkOps.concurrencyCap || 0.7)
       ) {
         newConcurrency = Math.min(
           currentConcurrency + 1,
-          Math.floor(this.options.maxConcurrency * 0.7)
+          Math.floor(
+            this.options.maxConcurrency * (bulkOps.concurrencyCap || 0.7),
+          ),
         );
       }
       // Decrease if processing is slow or error rate is elevated
-      else if (avgProcessingTime > 8000 || successRate < 0.95) {
+      else if (
+        avgProcessingTime > (bulkOps.slowThreshold || 8000) ||
+        successRate < (bulkOps.minSuccessRate || 0.95)
+      ) {
         newConcurrency = Math.max(
           currentConcurrency - 1,
-          this.options.minConcurrency
+          this.options.minConcurrency,
         );
       }
     }
     // Normal operations - original logic but more conservative
     else {
+      const normalOps = queueConfig.normalOps || {};
       // Increase concurrency if queue is building up and success rate is excellent
       if (
-        queueLength > currentConcurrency * 2 &&
-        successRate > 0.98 &&
-        avgProcessingTime < 4000
+        queueLength >
+          currentConcurrency * (normalOps.scaleUpQueueFactor || 2) &&
+        successRate > (normalOps.successThreshold || 0.98) &&
+        avgProcessingTime < (normalOps.maxProcessingTime || 4000)
       ) {
         newConcurrency = Math.min(
           currentConcurrency + 1,
-          this.options.maxConcurrency
+          this.options.maxConcurrency,
         );
       }
       // Decrease concurrency if processing is slow or error rate is elevated
-      else if (avgProcessingTime > 10000 || successRate < 0.9) {
+      else if (
+        avgProcessingTime > (normalOps.slowThreshold || 10000) ||
+        successRate < (normalOps.minSuccessRate || 0.9)
+      ) {
         newConcurrency = Math.max(
           currentConcurrency - 1,
-          this.options.minConcurrency
+          this.options.minConcurrency,
         );
       }
       // Decrease concurrency if queue is empty for extended period
@@ -319,7 +346,7 @@ class EnhancedQueue extends EventEmitter {
       ) {
         newConcurrency = Math.max(
           currentConcurrency - 1,
-          this.options.minConcurrency
+          this.options.minConcurrency,
         );
       }
     }
@@ -450,7 +477,7 @@ class EnhancedQueue extends EventEmitter {
           if (this.queue.idle()) {
             resolve();
           } else {
-            setTimeout(checkIdle, 100);
+            setTimeout(checkIdle, queueConfig.drainPollInterval || 100);
           }
         };
         checkIdle();
@@ -486,7 +513,7 @@ class EnhancedQueue extends EventEmitter {
     const oldConcurrency = this.queue.concurrency;
     this.queue.concurrency = Math.max(
       1,
-      Math.min(concurrency, this.options.maxConcurrency)
+      Math.min(concurrency, this.options.maxConcurrency),
     );
 
     if (oldConcurrency !== this.queue.concurrency) {

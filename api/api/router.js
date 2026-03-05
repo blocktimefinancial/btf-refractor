@@ -1,18 +1,19 @@
 const { createCorsMiddleware } = require("../middleware/cors"),
   { getRequestLogger } = require("../middleware/request-id"),
-  rateLimit = require("express-rate-limit");
+  rateLimit = require("express-rate-limit"),
+  config = require("../app.config");
 
 // Create CORS middleware instance with blacklist support
 const corsMiddleware = createCorsMiddleware();
 
 const rateLimits = {
   general: rateLimit({
-    windowMs: 1 * 1000, // 1 second window
-    max: 100, // max 100 requests per second
+    windowMs: config.rateLimit.general.windowMs,
+    max: config.rateLimit.general.max,
   }),
   strict: rateLimit({
-    windowMs: 1 * 1000, // 1 second window
-    max: 50, // max 50 requests per second for strict endpoints
+    windowMs: config.rateLimit.strict.windowMs,
+    max: config.rateLimit.strict.max,
   }),
 };
 
@@ -90,7 +91,7 @@ module.exports = {
         res,
         handler(req),
         headers,
-        req.query && req.query.prettyPrint !== undefined
+        req.query && req.query.prettyPrint !== undefined,
       );
     });
     //register pre-flight request handler

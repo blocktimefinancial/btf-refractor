@@ -57,7 +57,7 @@ class Finalizer {
           newConcurrency,
           reason,
         });
-      }
+      },
     );
 
     this.finalizerQueue.on("taskFailed", ({ taskId, attempts, error }) => {
@@ -128,7 +128,8 @@ class Finalizer {
     let nextTimeout;
     if (foundCount >= this.targetQueueSize) {
       // We hit the queue limit, check again quickly for remaining transactions
-      nextTimeout = 500;
+      const finalizerConfig = require("../../app.config").finalizer || {};
+      nextTimeout = finalizerConfig.fastPollIntervalMs || 500;
     } else if (foundCount > 0) {
       // Found some transactions but not many, check again at normal interval
       nextTimeout = this.tickerTimeout;
@@ -145,7 +146,7 @@ class Finalizer {
 
     this.processorTimerHandler = setTimeout(
       () => this.scheduleTransactionsBatch(),
-      nextTimeout
+      nextTimeout,
     );
   }
 
@@ -198,7 +199,7 @@ class Finalizer {
         !(await storageLayer.dataProvider.updateTxStatus(
           txInfo.hash,
           "processing",
-          "ready"
+          "ready",
         ))
       ) {
         logger.debug("Failed to obtain lock", { hash: txInfo.hash });
@@ -243,7 +244,7 @@ class Finalizer {
             blockchain,
           });
           throw new Error(
-            `Transaction submission not supported for blockchain: ${blockchain}`
+            `Transaction submission not supported for blockchain: ${blockchain}`,
           );
         }
 
@@ -264,7 +265,7 @@ class Finalizer {
         !(await storageLayer.dataProvider.updateTransaction(
           txInfo.hash,
           update,
-          "processing"
+          "processing",
         ))
       ) {
         logger.error("Failed to update status to processed", {
@@ -294,7 +295,7 @@ class Finalizer {
         txInfo.hash,
         "failed",
         "processing",
-        e
+        e,
       );
       throw e; // Re-throw for enhanced queue to handle
     }
@@ -349,7 +350,7 @@ class Finalizer {
   start() {
     logger.info("Finalizer started");
     this.scheduleTransactionsBatch().catch((e) =>
-      logger.error("Batch scheduling error", { error: e.message })
+      logger.error("Batch scheduling error", { error: e.message }),
     );
   }
 
@@ -372,7 +373,7 @@ class Finalizer {
       await storageLayer.dataProvider.updateTxStatus(
         txInfo.hash,
         "ready",
-        "processing"
+        "processing",
       );
       count++;
     }

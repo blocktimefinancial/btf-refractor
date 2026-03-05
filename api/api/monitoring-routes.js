@@ -227,10 +227,15 @@ router.post("/queue/concurrency", requireAdminAuth(), (req, res) => {
   try {
     const { concurrency } = req.body;
 
-    if (!concurrency || concurrency < 1 || concurrency > 100) {
+    const maxAdminConcurrency =
+      (config.queue && config.queue.maxAdminConcurrency) || 100;
+
+    if (!concurrency || concurrency < 1 || concurrency > maxAdminConcurrency) {
       return res
         .status(400)
-        .json({ error: "Invalid concurrency value (1-100)" });
+        .json({
+          error: `Invalid concurrency value (1-${maxAdminConcurrency})`,
+        });
     }
 
     finalizer.setQueueConcurrency(parseInt(concurrency));

@@ -6,13 +6,14 @@ const MongoClient = require("mongodb").MongoClient,
 
 class MongodbDataProvider extends DataProvider {
   async init() {
+    const mongoConfig = config.mongodb || {};
     const options = {
       appname,
       promoteValues: true,
       promoteLongs: false,
       retryWrites: true,
       authSource: "admin",
-      minPoolSize: 2,
+      minPoolSize: mongoConfig.minPoolSize || 2,
     };
 
     const connection = await MongoClient.connect(config.db, options);
@@ -44,7 +45,7 @@ class MongodbDataProvider extends DataProvider {
     await this.txCollection.updateOne(
       { _id: hash },
       { $set: otherProps },
-      { upsert: true }
+      { upsert: true },
     );
   }
 

@@ -9,14 +9,15 @@ const logger = require("../utils/logger").forComponent("mongoose");
 
 class MongooseDataProvider extends DataProvider {
   async init() {
+    const mongoConfig = config.mongodb || {};
     const options = {
       appName: appname,
-      maxPoolSize: 10,
-      minPoolSize: 2,
-      maxIdleTimeMS: 30000,
-      serverSelectionTimeoutMS: 5000,
-      socketTimeoutMS: 45000,
-      family: 4, // Use IPv4
+      maxPoolSize: mongoConfig.maxPoolSize || 10,
+      minPoolSize: mongoConfig.minPoolSize || 2,
+      maxIdleTimeMS: mongoConfig.maxIdleTimeMs || 30000,
+      serverSelectionTimeoutMS: mongoConfig.serverSelectionTimeoutMs || 5000,
+      socketTimeoutMS: mongoConfig.socketTimeoutMs || 45000,
+      family: mongoConfig.family || 4,
       retryWrites: true,
       retryReads: true,
       bufferCommands: false,
@@ -98,7 +99,7 @@ class MongooseDataProvider extends DataProvider {
           new: true,
           runValidators: true,
           setDefaultsOnInsert: true,
-        }
+        },
       );
 
       return result;
@@ -335,7 +336,7 @@ class MongooseDataProvider extends DataProvider {
           lastError: "Transaction expired",
           updatedAt: new Date(),
         },
-      }
+      },
     );
 
     return result.modifiedCount;

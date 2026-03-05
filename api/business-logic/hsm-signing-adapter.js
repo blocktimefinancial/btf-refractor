@@ -18,6 +18,7 @@
  */
 
 const logger = require("../utils/logger").forComponent("hsm-signing-adapter");
+const config = require("../app.config");
 
 // ── Default provider loaders ────────────────────────────────────────
 // These resolve lazily so the module can be required even when
@@ -62,7 +63,7 @@ class HsmSigningAdapter {
    */
   constructor(options = {}) {
     this.tier = options.tier || "envelope";
-    this.dbName = options.dbName || "refractor";
+    this.dbName = options.dbName || (config.hsm && config.hsm.databaseName) || "refractor";
 
     // Dependency injection — use provided overrides or load real modules
     // Use nullish coalescing so explicit null/undefined triggers lazy loading

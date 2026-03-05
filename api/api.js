@@ -13,7 +13,8 @@
     express = require("express"),
     helmet = require("helmet"),
     bodyParser = require("body-parser"),
-    { port, trustProxy } = require("./app.config"),
+    config = require("./app.config"),
+    { port, trustProxy } = config,
     { requestIdMiddleware } = require("./middleware/request-id"),
     finalizer = require("./business-logic/finalization/finalizer");
 
@@ -52,7 +53,7 @@
       },
       crossOriginEmbedderPolicy: false, // Disable for API compatibility
       crossOriginResourcePolicy: { policy: "cross-origin" }, // Allow cross-origin API access
-    })
+    }),
   );
 
   // Request ID middleware - must be early to ensure all requests have an ID
@@ -64,7 +65,7 @@
   }
 
   // Request payload size limits to prevent large payload attacks
-  const payloadLimit = process.env.MAX_PAYLOAD_SIZE || "1mb";
+  const payloadLimit = config.maxPayloadSize || "1mb";
   app.use(bodyParser.json({ limit: payloadLimit }));
   app.use(bodyParser.urlencoded({ extended: false, limit: payloadLimit }));
 
@@ -115,7 +116,7 @@
     logger.info("Initiating graceful shutdown", { exitCode });
 
     // Force exit after timeout (safety net)
-    const FORCE_EXIT_TIMEOUT = 10000; // 10 seconds
+    const FORCE_EXIT_TIMEOUT = config.gracefulShutdownTimeoutMs || 10000;
     const forceExitTimer = setTimeout(() => {
       logger.error("Graceful shutdown timed out, forcing exit");
       process.exit(-1);
@@ -190,7 +191,9 @@
   const server = http.createServer(app);
 
   server.on("listening", () =>
-    logger.info("Refractor API server started", { port: server.address().port })
+    logger.info("Refractor API server started", {
+      port: server.address().port,
+    }),
   );
   server.listen(serverPort);
 })();

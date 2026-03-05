@@ -14,6 +14,7 @@
  */
 
 const logger = require("./logger").forComponent("circuit-breaker");
+const config = require("../app.config");
 
 // ── States ────────────────────────────────────────────────────────
 const STATE = Object.freeze({
@@ -22,21 +23,21 @@ const STATE = Object.freeze({
   HALF_OPEN: "HALF_OPEN",
 });
 
-// ── Default options per breaker type ─────────────────────────────
+// ── Default options per breaker type (from config) ───────────────
 const DEFAULTS = {
-  horizon: {
+  horizon: (config.circuitBreaker && config.circuitBreaker.horizon) || {
     timeout: 10000,
     errorThresholdPercentage: 50,
     resetTimeout: 30000,
     volumeThreshold: 5,
   },
-  evmRpc: {
+  evmRpc: (config.circuitBreaker && config.circuitBreaker.evmRpc) || {
     timeout: 15000,
     errorThresholdPercentage: 50,
     resetTimeout: 30000,
     volumeThreshold: 5,
   },
-  hsm: {
+  hsm: (config.circuitBreaker && config.circuitBreaker.hsm) || {
     timeout: 5000,
     errorThresholdPercentage: 30,
     resetTimeout: 15000,

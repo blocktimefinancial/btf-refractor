@@ -28,14 +28,14 @@ const consoleFormat = winston.format.combine(
   winston.format.printf(({ level, message, timestamp, ...meta }) => {
     const metaStr = Object.keys(meta).length ? ` ${JSON.stringify(meta)}` : "";
     return `[${timestamp}] ${level}: ${message}${metaStr}`;
-  })
+  }),
 );
 
 // JSON format for production/file logging
 const jsonFormat = winston.format.combine(
   winston.format.timestamp(),
   winston.format.errors({ stack: true }),
-  winston.format.json()
+  winston.format.json(),
 );
 
 // Create transports array
@@ -46,16 +46,29 @@ const transports = [
   }),
 ];
 
+// Load logging config (safe — no circular deps since logger is leaf)
+let logMaxFileSize = 10 * 1024 * 1024;
+let logMaxFiles = 5;
+try {
+  const baseConfig = require("../app.config.json");
+  if (baseConfig.logging) {
+    logMaxFileSize = baseConfig.logging.maxFileSize || logMaxFileSize;
+    logMaxFiles = baseConfig.logging.maxFiles || logMaxFiles;
+  }
+} catch {
+  /* config not available */
+}
+
 // Add file transport in production
 if (isProduction && process.env.LOG_FILE) {
   transports.push(
     new winston.transports.File({
       filename: process.env.LOG_FILE,
       format: jsonFormat,
-      maxsize: 10 * 1024 * 1024, // 10MB
-      maxFiles: 5,
+      maxsize: logMaxFileSize,
+      maxFiles: logMaxFiles,
       tailable: true,
-    })
+    }),
   );
 
   // Separate error log file
@@ -64,10 +77,10 @@ if (isProduction && process.env.LOG_FILE) {
       filename: process.env.LOG_FILE.replace(".log", "-error.log"),
       level: "error",
       format: jsonFormat,
-      maxsize: 10 * 1024 * 1024,
-      maxFiles: 5,
+      maxsize: logMaxFileSize,
+      maxFiles: logMaxFiles,
       tailable: true,
-    })
+    }),
   );
 }
 
@@ -121,8 +134,8 @@ logger.info("Logger initialized", {
   environment: isProduction
     ? "production"
     : isDevelopment
-    ? "development"
-    : "default",
+      ? "development"
+      : "default",
 });
 
 module.exports = logger;

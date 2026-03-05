@@ -12,6 +12,9 @@
  * @see https://pm2.keymetrics.io/docs/usage/application-declaration/
  */
 
+const baseConfig = require("./app.config.json");
+const pm2Config = baseConfig.pm2 || {};
+
 module.exports = {
   apps: [
     {
@@ -25,7 +28,7 @@ module.exports = {
       exec_mode: "cluster",
 
       // ── Memory Management ───────────────────────────────────────
-      max_memory_restart: "1G", // Restart worker if it exceeds 1 GB
+      max_memory_restart: pm2Config.maxMemoryRestart || "1G",
 
       // ── Logging ─────────────────────────────────────────────────
       log_date_format: "YYYY-MM-DD HH:mm:ss.SSS Z",
@@ -34,15 +37,15 @@ module.exports = {
       merge_logs: true, // Combine all cluster worker logs
 
       // ── Stability ───────────────────────────────────────────────
-      min_uptime: "10s", // Consider started after 10s without crash
-      max_restarts: 15, // Max restarts within restart_delay window
-      restart_delay: 4000, // Wait 4s between restarts
+      min_uptime: pm2Config.minUptime || "10s",
+      max_restarts: pm2Config.maxRestarts || 15,
+      restart_delay: pm2Config.restartDelay || 4000,
       autorestart: true,
       watch: false, // Do NOT watch files in production
 
       // ── Graceful Shutdown ───────────────────────────────────────
-      kill_timeout: 5000, // Wait 5s for graceful shutdown
-      listen_timeout: 10000, // Wait 10s for app ready signal
+      kill_timeout: pm2Config.killTimeout || 5000,
+      listen_timeout: pm2Config.listenTimeout || 10000,
       shutdown_with_message: true,
 
       // ── Environment — Development ───────────────────────────────
@@ -55,7 +58,7 @@ module.exports = {
       env_production: {
         NODE_ENV: "production",
         PORT: 4010,
-        UV_THREADPOOL_SIZE: 16, // Increase for crypto operations
+        UV_THREADPOOL_SIZE: pm2Config.uvThreadpoolSize || 16,
 
         // HSM defaults (override via .env or deployment config)
         HSM_SIGNING_ENABLED: "true",

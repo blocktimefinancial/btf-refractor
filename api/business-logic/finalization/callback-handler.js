@@ -1,4 +1,6 @@
 const axios = require("axios");
+const config = require("../../app.config");
+const callbackConfig = config.callback || {};
 
 let callbackHandler = function (txInfo) {
   const { tx, network, hash, callbackUrl } = txInfo;
@@ -13,16 +15,18 @@ let callbackHandler = function (txInfo) {
 async function processCallback(txInfo) {
   if (!txInfo.callbackUrl)
     throw new Error(
-      `Attempt to execute an empty callback for tx ${txInfo.hash}`
+      `Attempt to execute an empty callback for tx ${txInfo.hash}`,
     );
-  for (let i = 4; i <= 12; i++) {
+  const minShift = callbackConfig.retryMinShift || 4;
+  const maxShift = callbackConfig.retryMaxShift || 12;
+  for (let i = minShift; i <= maxShift; i++) {
     const { statusCode } = await callbackHandler(txInfo);
     if (statusCode === 200) return;
     //repeat
     await new Promise((resolve) => setTimeout(resolve, 1 << i)); //exponential backoff waiting strategy
   }
   throw new Error(
-    `Server returned invalid status code after processing the callback`
+    `Server returned invalid status code after processing the callback`,
   ); //no response from the server
 }
 

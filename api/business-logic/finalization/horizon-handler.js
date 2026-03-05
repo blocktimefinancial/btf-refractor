@@ -18,7 +18,7 @@ let submitTransactionWorker = function (txInfo) {
   }
   return horizon.submitTransaction(
     TransactionBuilder.fromXDR(txInfo.xdr, network.passphrase),
-    { skipMemoRequiredCheck: true }
+    { skipMemoRequiredCheck: true },
   );
 };
 
@@ -29,7 +29,7 @@ const submitTransactionWrapper = (txInfo) => submitTransactionWorker(txInfo);
 const horizonQueue = new EnhancedQueue(submitTransactionWrapper, {
   concurrency: config.horizonConcurrency || 10,
   maxConcurrency: config.maxHorizonConcurrency || 20,
-  minConcurrency: 1,
+  minConcurrency: config.horizonMinConcurrency || 1,
   adaptiveConcurrency: config.adaptiveHorizonConcurrency || true,
   retryAttempts: config.horizonRetryAttempts || 5,
   retryDelay: config.horizonRetryDelay || 2000,
@@ -91,7 +91,7 @@ horizonQueue.on(
       newConcurrency,
       reason,
     });
-  }
+  },
 );
 
 function setSubmitTransactionCallback(callback) {
@@ -115,7 +115,7 @@ async function submitTransaction(txInfo) {
     if (error.response && error.response.status) {
       // Preserve the original error structure for Horizon-specific errors
       enhancedError = new Error(
-        `Horizon submission failed: ${error.message || "Unknown error"}`
+        `Horizon submission failed: ${error.message || "Unknown error"}`,
       );
       enhancedError.name = "HorizonSubmissionError";
       enhancedError.status = error.response.status;
@@ -154,7 +154,7 @@ async function submitTransaction(txInfo) {
     } else {
       // Handle network errors and other non-HTTP errors
       enhancedError = new Error(
-        `Transaction submission failed: ${error.message || error.toString()}`
+        `Transaction submission failed: ${error.message || error.toString()}`,
       );
       enhancedError.name = "TransactionSubmissionError";
       enhancedError.originalError = error;
