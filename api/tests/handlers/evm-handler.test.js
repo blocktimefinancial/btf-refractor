@@ -76,10 +76,11 @@ describe("EVM Handler", () => {
       expect(EVM_BLOCKCHAINS).toContain("optimism");
       expect(EVM_BLOCKCHAINS).toContain("base");
       expect(EVM_BLOCKCHAINS).toContain("avalanche");
+      expect(EVM_BLOCKCHAINS).toContain("onemoney");
     });
 
-    it("should have 6 chains", () => {
-      expect(EVM_BLOCKCHAINS.length).toBe(6);
+    it("should have 7 chains", () => {
+      expect(EVM_BLOCKCHAINS.length).toBe(7);
     });
   });
 
@@ -122,45 +123,53 @@ describe("EVM Handler", () => {
     describe("isValidPublicKey (address validation)", () => {
       it("should accept valid EVM address", () => {
         expect(
-          handler.isValidPublicKey("0x742d35Cc6634C0532925a3b844Bc9e7595f8fEc5")
+          handler.isValidPublicKey(
+            "0x742d35Cc6634C0532925a3b844Bc9e7595f8fEc5",
+          ),
         ).toBe(true);
       });
 
       it("should accept lowercase address", () => {
         expect(
-          handler.isValidPublicKey("0x742d35cc6634c0532925a3b844bc9e7595f8fec5")
+          handler.isValidPublicKey(
+            "0x742d35cc6634c0532925a3b844bc9e7595f8fec5",
+          ),
         ).toBe(true);
       });
 
       it("should accept uppercase address", () => {
         expect(
-          handler.isValidPublicKey("0x742D35CC6634C0532925A3B844BC9E7595F8FEC5")
+          handler.isValidPublicKey(
+            "0x742D35CC6634C0532925A3B844BC9E7595F8FEC5",
+          ),
         ).toBe(true);
       });
 
       it("should reject address without 0x prefix", () => {
         expect(
-          handler.isValidPublicKey("742d35Cc6634C0532925a3b844Bc9e7595f8fEc5")
+          handler.isValidPublicKey("742d35Cc6634C0532925a3b844Bc9e7595f8fEc5"),
         ).toBe(false);
       });
 
       it("should reject short address", () => {
         expect(
-          handler.isValidPublicKey("0x742d35Cc6634C0532925a3b844Bc9e759")
+          handler.isValidPublicKey("0x742d35Cc6634C0532925a3b844Bc9e759"),
         ).toBe(false);
       });
 
       it("should reject long address", () => {
         expect(
           handler.isValidPublicKey(
-            "0x742d35Cc6634C0532925a3b844Bc9e7595f8fEc5ab"
-          )
+            "0x742d35Cc6634C0532925a3b844Bc9e7595f8fEc5ab",
+          ),
         ).toBe(false);
       });
 
       it("should reject non-hex characters", () => {
         expect(
-          handler.isValidPublicKey("0xGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG")
+          handler.isValidPublicKey(
+            "0xGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG",
+          ),
         ).toBe(false);
       });
 
@@ -231,13 +240,13 @@ describe("EVM Handler", () => {
 
       it("should identify EIP-2930 transactions", () => {
         expect(handler.getTransactionType({ type: 1 })).toBe(
-          "EIP-2930 (Access List)"
+          "EIP-2930 (Access List)",
         );
       });
 
       it("should identify EIP-1559 transactions", () => {
         expect(handler.getTransactionType({ type: 2 })).toBe(
-          "EIP-1559 (Dynamic Fee)"
+          "EIP-1559 (Dynamic Fee)",
         );
       });
 
@@ -327,8 +336,8 @@ describe("EVM Handler", () => {
         it("should validate EVM addresses", () => {
           expect(
             handler.isValidPublicKey(
-              "0x742d35Cc6634C0532925a3b844Bc9e7595f8fEc5"
-            )
+              "0x742d35Cc6634C0532925a3b844Bc9e7595f8fEc5",
+            ),
           ).toBe(true);
         });
       });

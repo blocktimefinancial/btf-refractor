@@ -36,9 +36,9 @@ describe("Handler Factory", () => {
     });
 
     it("should throw 501 for recognized but unimplemented blockchain", () => {
-      // Solana is recognized but not implemented yet
+      // Bitcoin is recognized in the registry but has no handler yet
       try {
-        getHandler("solana");
+        getHandler("bitcoin");
         fail("Should have thrown");
       } catch (e) {
         expect(e.status).toBe(501);
@@ -95,8 +95,12 @@ describe("Handler Factory", () => {
       expect(hasHandler("avalanche")).toBe(true);
     });
 
+    it("should return true for Solana", () => {
+      expect(hasHandler("solana")).toBe(true);
+    });
+
     it("should return false for unimplemented blockchain", () => {
-      expect(hasHandler("solana")).toBe(false);
+      expect(hasHandler("cardano")).toBe(false);
     });
 
     it("should return false for unknown blockchain", () => {
@@ -130,6 +134,11 @@ describe("Handler Factory", () => {
       expect(blockchains).toContain("optimism");
       expect(blockchains).toContain("base");
       expect(blockchains).toContain("avalanche");
+    });
+
+    it("should return array with solana", () => {
+      const blockchains = getImplementedBlockchains();
+      expect(blockchains).toContain("solana");
     });
   });
 

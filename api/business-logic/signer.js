@@ -46,7 +46,7 @@ class Signer {
     // Route to appropriate initialization
     if (this.blockchain === "stellar") {
       this._initStellarCompatible(request);
-    } else if (this.blockchain === "algorand") {
+    } else if (this.blockchain === "algorand" || this.blockchain === "solana") {
       this._initAlgorand(request);
     } else if (isEvmBlockchain(this.blockchain)) {
       this._initEvm(request);
@@ -112,7 +112,9 @@ class Signer {
   }
 
   /**
-   * Initialize for Algorand blockchain (ed25519)
+   * Initialize for Algorand/Solana blockchain (ed25519)
+   * Both use ed25519 keys — Algorand with base32 addresses,
+   * Solana with base58 addresses. Same signing flow.
    * @private
    */
   _initAlgorand(request) {
@@ -231,7 +233,7 @@ class Signer {
     // Route to blockchain-specific initialization
     if (this.blockchain === "stellar") {
       await this._initStellarSigners();
-    } else if (this.blockchain === "algorand") {
+    } else if (this.blockchain === "algorand" || this.blockchain === "solana") {
       await this._initAlgorandSigners();
     } else if (isEvmBlockchain(this.blockchain)) {
       await this._initEvmSigners();
@@ -496,7 +498,7 @@ class Signer {
   processSignature(rawSignature) {
     if (isEvmBlockchain(this.blockchain)) {
       this._processEvmSignature(rawSignature);
-    } else if (this.blockchain === "algorand") {
+    } else if (this.blockchain === "algorand" || this.blockchain === "solana") {
       this._processAlgorandSignature(rawSignature);
     } else {
       this._processStellarSignature(rawSignature);
@@ -526,7 +528,7 @@ class Signer {
       const handler = this._handler || getHandler(this.blockchain);
       return handler.verifySignedTransaction(this.tx, key);
     }
-    if (this.blockchain === "algorand") {
+    if (this.blockchain === "algorand" || this.blockchain === "solana") {
       return this._verifyAlgorandSignature(key, signature);
     }
     return this._verifyStellarSignature(key, signature);
@@ -552,8 +554,8 @@ class Signer {
           this.processSignature(signature);
         }
       }
-    } else if (this.blockchain === "algorand") {
-      // Algorand path - ed25519 signatures as base64 strings
+    } else if (this.blockchain === "algorand" || this.blockchain === "solana") {
+      // Algorand/Solana path - ed25519 signatures as base64 strings
       for (let signature of this.signaturesToProcess) {
         const sigStr =
           typeof signature.signature === "string"

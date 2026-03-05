@@ -1,6 +1,6 @@
 # Refractor API — Azure Confidential VM Optimization & Deployment Plan
 
-> **Date:** March 4, 2026
+> **Date:** March 5, 2026
 > **Status:** Planning
 > **Scope:** API optimization, HSM signing integration from `btf-lib-v1/secret/hsmKeyStore`, KEK-DEK envelope encryption, Azure Confidential VM deployment
 
@@ -24,17 +24,19 @@
 
 ### Current Architecture
 
-| Component         | Technology                                                   | Notes                                                    |
-| ----------------- | ------------------------------------------------------------ | -------------------------------------------------------- |
-| **Runtime**       | Node.js + Express 5.1                                        | Async IIFE entry point, single-process                   |
-| **Database**      | MongoDB via Mongoose 8.x                                     | Primary storage; Firestore/FS/in-memory alternatives     |
-| **Queue**         | `fastq` via `EnhancedQueue`                                  | Adaptive concurrency, retry, metrics                     |
-| **Blockchains**   | Stellar (primary), 1Money, Algorand, Ethereum/EVM (6 chains) | Handler-factory pattern; 1Money uses EVM-compatible keys |
-| **Signing**       | In-memory `@stellar/stellar-sdk` `Keypair`                   | **Keys in plaintext memory**                             |
-| **Auth**          | API-key header (`X-Admin-API-Key`), constant-time compare    | Admin routes only                                        |
-| **Rate limiting** | `express-rate-limit` (100/s general, 50/s strict)            | Per-window, no distributed store                         |
-| **Logging**       | Winston with component-scoped child loggers                  | Structured JSON                                          |
-| **Security**      | Helmet CSP, CORS blacklist, payload limits                   | Good baseline                                            |
+| Component       | Technology                                                           | Notes                                                                                     |
+| --------------- | -------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| **Runtime**     | Node.js + Express 5.1                                                | Async IIFE entry point, single-process                                                    |
+| **Database**    | MongoDB via Mongoose 8.x                                             | Primary storage; Firestore/FS/in-memory alternatives                                      |
+| **Queue**       | `fastq` via `EnhancedQueue`                                          | Adaptive concurrency, retry, metrics                                                      |
+| **Blockchains** | Stellar (primary), Solana, 1Money, Algorand, Ethereum/EVM (6 chains) | Handler-factory pattern; Solana & Algorand share ed25519; 1Money uses EVM-compatible keys |
+
+> **Registry vs. Handler coverage:** The blockchain registry (`blockchain-registry.js`) also defines configurations for **Bitcoin** and **Aptos**, but no handlers are implemented for these chains yet. They are recognized as valid blockchain identifiers but will return a 501 when signing is attempted.
+> | **Signing** | In-memory `@stellar/stellar-sdk` `Keypair` | **Keys in plaintext memory** |
+> | **Auth** | API-key header (`X-Admin-API-Key`), constant-time compare | Admin routes only |
+> | **Rate limiting** | `express-rate-limit` (100/s general, 50/s strict) | Per-window, no distributed store |
+> | **Logging** | Winston with component-scoped child loggers | Structured JSON |
+> | **Security** | Helmet CSP, CORS blacklist, payload limits | Good baseline |
 
 ### Identified Issues
 
@@ -72,11 +74,16 @@ flowchart LR
 
 The signing path that must be modified:
 
-1. **`business-logic/signer.js`** — `_verifyStellarSignature()`, `processSignature()`, `verifySignature()`
-2. **`business-logic/finalization/tx-submitter.js`** — Transaction submission (needs HSM-signed payloads)
-3. **`business-logic/finalization/horizon-handler.js`** — Stellar submission
-4. **`business-logic/handlers/stellar-handler.js`** — Stellar transaction parsing
-5. **`storage/storage-layer.js`** — Must also store encrypted key metadata
+1. **`business-logic/signer.js`** — Multi-chain routing: `_verifyStellarSignature()`, `_verifyAlgorandSignature()` (also handles Solana ed25519), `_processEvmSignature()`, `processSignature()`, `verifySignature()`
+2. **`business-logic/handlers/handler-factory.js`** — Central routing for all 10 handler-supported blockchains (Stellar, Solana, Algorand, 1Money, Ethereum, Polygon, Arbitrum, Optimism, Base, Avalanche)
+3. **`business-logic/handlers/stellar-handler.js`** — Stellar XDR transaction parsing + ed25519 verification
+4. **`business-logic/handlers/algorand-handler.js`** — Algorand msgpack parsing + ed25519 verification
+5. **`business-logic/handlers/solana-handler.js`** — Solana binary wire-format parsing + ed25519 verification
+6. **`business-logic/handlers/onemoney-handler.js`** — 1Money JSON parsing (extends EVM handler, secp256k1)
+7. **`business-logic/handlers/evm-handler.js`** — EVM RLP parsing + secp256k1/ECDSA (Ethereum + 5 L2 chains)
+8. **`business-logic/finalization/tx-submitter.js`** — Transaction submission to Stellar Horizon and EVM RPCs (Solana/Algorand submission pending)
+9. **`business-logic/finalization/horizon-handler.js`** — Stellar-specific submission
+10. **`storage/storage-layer.js`** — Must also store encrypted key metadata
 
 ---
 
@@ -102,15 +109,25 @@ flowchart TB
 
     ATTEST --> MANAGED_HSM["Azure Managed HSM<br/>AZ-BTF-HSM<br/>master-kek RSA-2048<br/>wrapKey / unwrap"]
     ATTEST --> COSMOS["Azure Cosmos DB /<br/>MongoDB Atlas<br/>Encrypted DEKs + tx records"]
-    ATTEST --> STELLAR["Stellar Horizon<br/>Network"]
+    ATTEST --> NETWORKS["Blockchain Networks<br/>Stellar Horizon │ EVM RPCs (6 chains) │<br/>Solana RPC │ Algorand RPC │ 1Money RPC"]
 ```
 
 ### Two-Tier Signing Model
 
-| Tier                            | Module                                        | Use Case                         | Memory Exposure                         |
-| ------------------------------- | --------------------------------------------- | -------------------------------- | --------------------------------------- |
-| **Tier 1: Direct HSM**          | `azureCryptoService.signStellarTransaction()` | Treasury/custody keys (< 120K)   | **Zero** — key never leaves HSM         |
-| **Tier 2: Envelope Encryption** | `hsmKeyStore.signStellarTransaction()`        | User wallets at scale (millions) | **Milliseconds** — protected by SEV-SNP |
+| Tier                            | Module                                                                | Use Case                         | Memory Exposure                         |
+| ------------------------------- | --------------------------------------------------------------------- | -------------------------------- | --------------------------------------- |
+| **Tier 1: Direct HSM**          | `azureCryptoService.sign{Stellar,Algorand,Solana,Evm}Transaction()`   | Treasury/custody keys (< 120K)   | **Zero** — key never leaves HSM         |
+| **Tier 2: Envelope Encryption** | `hsmKeyStore.sign{Stellar,Algorand,Solana,Evm,OneMoney}Transaction()` | User wallets at scale (millions) | **Milliseconds** — protected by SEV-SNP |
+
+**Signing methods per blockchain:**
+
+| Blockchain       | Curve     | HSM Signing Function        | Notes                                           |
+| ---------------- | --------- | --------------------------- | ----------------------------------------------- |
+| Stellar          | ed25519   | `signStellarTransaction()`  | Returns signed XDR                              |
+| Algorand         | ed25519   | `signAlgorandTransaction()` | Reconstructs 64-byte key (seed‖pubkey)          |
+| Solana           | ed25519   | `signSolanaTransaction()`   | Signs message bytes, positional signature slots |
+| Ethereum/EVM (6) | secp256k1 | `signEvmTransaction()`      | ECDSA v/r/s over keccak256 hash                 |
+| 1Money           | secp256k1 | `signOneMoneyTransaction()` | Same secp256k1 path as EVM, JSON encoding       |
 
 The Confidential VM's AMD SEV-SNP hardware encryption means that even Tier 2's brief memory exposure is protected: the hypervisor, host OS, and co-tenant VMs cannot read the decrypted DEK.
 
@@ -219,11 +236,29 @@ Add circuit breakers for Horizon, EVM RPC, and HSM calls:
 ```javascript
 // New dependency: opossum or cockatiel
 const CircuitBreaker = require("opossum");
+
+// Stellar Horizon circuit breaker
 const horizonBreaker = new CircuitBreaker(horizonCall, {
   timeout: 10000,
   errorThresholdPercentage: 50,
   resetTimeout: 30000,
   volumeThreshold: 5,
+});
+
+// EVM JSON-RPC circuit breaker (shared across Ethereum, Polygon, etc.)
+const evmRpcBreaker = new CircuitBreaker(evmRpcCall, {
+  timeout: 15000,
+  errorThresholdPercentage: 50,
+  resetTimeout: 30000,
+  volumeThreshold: 5,
+});
+
+// HSM unwrap circuit breaker
+const hsmBreaker = new CircuitBreaker(hsmUnwrapCall, {
+  timeout: 5000,
+  errorThresholdPercentage: 30, // Tighter threshold — HSM issues are critical
+  resetTimeout: 15000,
+  volumeThreshold: 3,
 });
 ```
 
@@ -265,13 +300,13 @@ const limiter = rateLimit({
 
 ### 3.2 Code Quality Optimizations
 
-| Area           | Current                               | Proposed                                                |
-| -------------- | ------------------------------------- | ------------------------------------------------------- |
-| Error handling | Mix of `standardError` + raw throws   | Unified error boundary middleware                       |
-| Validation     | Joi at middleware + Mongoose validate | Single Joi pass, skip Mongoose re-validation            |
-| Logging        | Custom Winston per-app                | Standardize on `btf-lib-v1/logging` (see §3.2.A below)  |
-| Tests          | Jest with mocks                       | Add integration tests for HSM signing path              |
-| Health checks  | Basic DB + queue                      | Add HSM health, attestation status, key rotation alerts |
+| Area           | Current                                            | Proposed                                                |
+| -------------- | -------------------------------------------------- | ------------------------------------------------------- |
+| Error handling | Mix of `standardError` + raw throws                | Unified error boundary middleware                       |
+| Validation     | Joi at middleware + Mongoose validate              | Single Joi pass, skip Mongoose re-validation            |
+| Logging        | Custom Winston with component-scoped child loggers | Standardize on `btf-lib-v1/logging` (see §3.2.A below)  |
+| Tests          | Jest with mocks                                    | Add integration tests for HSM signing path              |
+| Health checks  | Basic DB + queue                                   | Add HSM health, attestation status, key rotation alerts |
 
 #### 3.2.A Standardized Logging — `btf-lib-v1/logging/logging.js`
 
@@ -408,7 +443,7 @@ btfLogger.forRequest = function (requestId, component) {
  * Create a child logger with HSM correlation context.
  * Used by the HSM signing adapter for end-to-end operation tracing.
  *
- * Usage: logger.forHsmOp(requestId, "signStellar", keyId)
+ * Usage: logger.forHsmOp(requestId, "signStellar", keyId)\n * Usage: logger.forHsmOp(requestId, "signSolana", keyId)\n * Usage: logger.forHsmOp(requestId, "signEvm", keyId)
  */
 btfLogger.forHsmOp = function (requestId, operation, keyId) {
   return this.child({
@@ -485,10 +520,10 @@ sequenceDiagram
     Client->>API: POST /tx
     API->>MW: attach req.id
     MW->>Signer: logger.forRequest(req.id, "signer")
-    Signer->>HSM: logger.forHsmOp(req.id, "signStellar", keyId)
+    Signer->>HSM: logger.forHsmOp(req.id, "sign{Blockchain}", keyId)
     HSM->>Log: logger.info("Signing", { requestId, hsmOp, keyId })
     Log-->>Log: Console + File + App Insights + Event Hubs
-    HSM-->>Signer: signed XDR
+    HSM-->>Signer: signed payload (XDR / {v,r,s} / base64 sig)
     Signer-->>API: 200 OK
     Note over Log: Every log line carries<br/>{ requestId, component, hsmOp, keyId }
 ```
@@ -647,6 +682,24 @@ class HsmSigningAdapter {
   }
 
   /**
+   * Sign a Solana transaction via HSM.
+   * Solana uses ed25519 (same curve as Algorand/Stellar). HSM unwraps the
+   * 32-byte ed25519 seed, reconstructs the full 64-byte keypair
+   * (seed‖pubkey), signs the transaction message bytes, and zeros memory.
+   *
+   * @param {string} keyId - Key identifier in the HSM key store
+   * @param {Buffer|Uint8Array} messageBytes - Serialized Solana message bytes to sign
+   * @returns {Promise<Object>} { signature: Buffer(64), publicKey: string (base58) }
+   */
+  async signSolanaTransaction(keyId, messageBytes) {
+    return hsmKeyStore.signSolanaTransaction({
+      keyId,
+      dbName: this.dbName,
+      messageBytes,
+    });
+  }
+
+  /**
    * Create a new HSM-managed key for a blockchain
    */
   async createKey(blockchain, options) {
@@ -717,6 +770,20 @@ async signWithHsm(keyId, options = {}) {
       };
       this.processSignature(sigObj);
     }
+  } else if (this.blockchain === 'solana') {
+    // Solana: HSM unwraps the 32-byte ed25519 seed, reconstructs the
+    // 64-byte key (seed‖pubkey), signs the message bytes, zeros memory.
+    // Unlike Algorand, Solana uses positional signatures — the i-th
+    // signature slot corresponds to the i-th required signer account key.
+    const result = await hsm.signSolanaTransaction(keyId, this.txInfo.messageBytes);
+    if (result.signature) {
+      const sigObj = {
+        type: 'ed25519',
+        signature: result.signature.toString('base64'),
+        from: result.publicKey,  // base58-encoded ed25519 public key
+      };
+      this.processSignature(sigObj);
+    }
   } else if (isEvmBlockchain(this.blockchain)) {
     // EVM and 1Money share the same secp256k1 signing path.
     // isEvmBlockchain('onemoney') returns true — 1Money uses identical
@@ -729,6 +796,14 @@ async signWithHsm(keyId, options = {}) {
 #### B. `tx-submitter.js` — HSM-Signed Submission
 
 When the API itself needs to co-sign (e.g., as a multisig participant):
+
+> **Note:** As of March 2026, `tx-submitter.js` supports final submission
+> to **Stellar Horizon** and **EVM RPCs** (Ethereum, Polygon, Arbitrum,
+> Optimism, Base, Avalanche, 1Money). **Solana and Algorand** have full
+> handler support (parsing, hashing, signature verification) but their
+> `submitTransaction()` paths in tx-submitter are not yet implemented
+> and will return a 501 error. Submission support for these chains
+> should be added in Phase 2.
 
 ```javascript
 // Before submission, check if server-side HSM signing is required
@@ -746,6 +821,8 @@ async function maybeHsmSign(txInfo) {
       return adapter.signStellarTransaction(serverKeyId, txInfo.transaction);
     case "algorand":
       return adapter.signAlgorandTransaction(serverKeyId, txInfo.transaction);
+    case "solana":
+      return adapter.signSolanaTransaction(serverKeyId, txInfo.messageBytes);
     case "onemoney":
       // 1Money uses EVM-compatible secp256k1 keys — same signing path as Ethereum
       return adapter.signOneMoneyTransaction(serverKeyId, txInfo.transaction);
@@ -804,6 +881,18 @@ sequenceDiagram
     HSM-->>API: { keyId, address, publicKey }
     API-->>Client: { keyId, address, publicKey }
 
+    Note over Client,DB: Solana Key Creation (same ed25519 curve as Stellar/Algorand)
+    Client->>API: POST /keys { blockchain: solana }
+    API->>HSM: createSolanaKey()
+    HSM->>HSM: Keypair.generate() → 64-byte key [seed(32)‖pubkey(32)]
+    HSM->>HSM: seed = key[0..31] (32-byte ed25519 seed)
+    HSM->>HW: wrapKey(RSA-OAEP, seed)
+    HW-->>HSM: encryptedDek
+    HSM->>HSM: secureZero(seed); key.fill(0)
+    HSM->>DB: Store { keyId, publicKey(base58), encryptedDek, kekName }
+    HSM-->>API: { keyId, publicKey }
+    API-->>Client: { keyId, publicKey }
+
     Note over Client,DB: 1Money Key Creation (same secp256k1 as Ethereum)
     Client->>API: POST /keys { blockchain: onemoney }
     API->>HSM: createEthereumKey({ blockchain: 'onemoney' })
@@ -850,6 +939,19 @@ sequenceDiagram
     Sign->>Sign: secureZero(seed); fullKey.fill(0) ← IMMEDIATE
     Sign-->>API: { signedTxn, txId }
     API-->>Client: { signedTxn, txId }
+
+    Note over Client,Sign: Solana ed25519 Signing
+    Client->>API: POST /keys/:keyId/sign { transaction: base64 }
+    API->>DB: Fetch encryptedDek + publicKey(base58)
+    DB-->>API: encryptedDek, publicKey
+    API->>HW: unwrapKey(RSA-OAEP, encryptedDek)
+    HW-->>API: 32-byte seed
+    API->>Sign: fullKey = Uint8Array(64) [seed‖pubkey]
+    Sign->>Sign: ed25519.sign(messageBytes, fullKey) → 64-byte signature
+    Sign->>Sign: secureZero(seed); fullKey.fill(0) ← IMMEDIATE
+    Sign->>Sign: Insert signature at signer's positional slot in tx
+    Sign-->>API: { signature(base64), publicKey(base58) }
+    API-->>Client: Signed Solana transaction (base64)
 
     Note over Client,Sign: 1Money Signing (secp256k1 — same as Ethereum)
     Client->>API: POST /keys/:keyId/sign { transaction: JSON payment }
@@ -1145,7 +1247,7 @@ jobs:
 | Create key management API routes (`/keys/*`)           | P0       | 2 days  |
 | Extend `monitoring-routes.js` with HSM health endpoint | P1       | 0.5 day |
 | Add HSM health to `/monitoring/health` composite check | P1       | 0.5 day |
-| Integrate keyMetadata LRU cache                        | P1       | 1 day   |
+| Integrate keyMetadata Redis cache                      | P1       | 1 day   |
 | Add circuit breakers for HSM + Horizon calls           | P1       | 1 day   |
 | Integration tests against HSM (dev environment)        | P0       | 2 days  |
 
@@ -1216,6 +1318,7 @@ HSM_SIGNING_ENABLED=true
 HSM_SIGNING_TIER=envelope           # 'envelope' (hsmKeyStore) or 'direct' (azureCryptoService)
 HSM_SERVER_KEY_STELLAR=<keyId>      # Server's own signing key ID
 HSM_SERVER_KEY_ALGORAND=<keyId>     # Server's Algorand signing key ID
+HSM_SERVER_KEY_SOLANA=<keyId>        # Server's Solana signing key ID (ed25519)
 HSM_SERVER_KEY_ONEMONEY=<keyId>     # Server's 1Money signing key ID (same secp256k1 format as ETH)
 
 # ── Confidential Computing ──
@@ -1252,6 +1355,7 @@ hsm: {
   serverKeyIds: {
     stellar: process.env.HSM_SERVER_KEY_STELLAR,
     algorand: process.env.HSM_SERVER_KEY_ALGORAND,
+    solana: process.env.HSM_SERVER_KEY_SOLANA,
     onemoney: process.env.HSM_SERVER_KEY_ONEMONEY,
     ethereum: process.env.HSM_SERVER_KEY_ETHEREUM,
   },
@@ -1305,6 +1409,7 @@ flowchart TD
 All HSM operations must produce structured audit events:
 
 ```javascript
+// Stellar example
 {
   event: 'hsm.sign',
   keyId: 'key_abc123',
@@ -1316,6 +1421,34 @@ All HSM operations must produce structured audit events:
   attestationValid: true,
   timestamp: '2026-03-04T12:00:00Z',
   requestId: 'req_xyz789',
+}
+
+// Solana example
+{
+  event: 'hsm.sign',
+  keyId: 'key_sol456',
+  blockchain: 'solana',
+  publicKey: '3FhjakEK...',          // base58 ed25519
+  txHash: 'c4f2e8...',
+  tier: 'envelope',
+  durationMs: 38,
+  attestationValid: true,
+  timestamp: '2026-03-04T12:00:01Z',
+  requestId: 'req_sol001',
+}
+
+// 1Money / EVM example
+{
+  event: 'hsm.sign',
+  keyId: 'key_1m789',
+  blockchain: 'onemoney',
+  address: '0x742d35Cc...',           // secp256k1 EVM address
+  txHash: 'f1a2b3...',
+  tier: 'envelope',
+  durationMs: 52,
+  attestationValid: true,
+  timestamp: '2026-03-04T12:00:02Z',
+  requestId: 'req_1m002',
 }
 ```
 
@@ -1362,7 +1495,7 @@ flowchart TD
 | Medium (100-1000 tx/min) | DC4as_v5 | 1 (PM2 cluster)    | ~1000 tx/min    |
 | High (> 1000 tx/min)     | DC8as_v5 | 2+ (load balanced) | ~5000 tx/min    |
 
-The primary bottleneck will be HSM unwrap latency (~5-15ms per operation). With connection pooling and the LRU metadata cache, the effective throughput is:
+The primary bottleneck will be HSM unwrap latency (~5-15ms per operation). With connection pooling and the Redis metadata cache, the effective throughput is:
 
 ```
 Max HSM-signing throughput ≈ (1000ms / 10ms avg unwrap) × concurrency × instances

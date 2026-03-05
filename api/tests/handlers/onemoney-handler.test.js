@@ -53,11 +53,11 @@ describe("1Money Handler", () => {
     });
 
     describe("isValidPublicKey", () => {
-      it("should accept valid Stellar-format public key", () => {
+      it("should accept valid 0x-prefixed EVM address", () => {
         expect(
           handler.isValidPublicKey(
-            "GBJVUCDVNUM3UASLDXPBDXLHJBSVOEGTJX5J6P3JD7DQKVQCYCBY5PP2"
-          )
+            "0x742d35Cc6634C0532925a3b844Bc9e7595f8fEc5",
+          ),
         ).toBe(true);
       });
 
@@ -65,9 +65,11 @@ describe("1Money Handler", () => {
         expect(handler.isValidPublicKey("invalid")).toBe(false);
       });
 
-      it("should reject EVM address", () => {
+      it("should reject Stellar-format key (1Money uses EVM addresses)", () => {
         expect(
-          handler.isValidPublicKey("0x742d35Cc6634C0532925a3b844Bc9e7595f8fEc5")
+          handler.isValidPublicKey(
+            "GBJVUCDVNUM3UASLDXPBDXLHJBSVOEGTJX5J6P3JD7DQKVQCYCBY5PP2",
+          ),
         ).toBe(false);
       });
 
@@ -83,14 +85,14 @@ describe("1Money Handler", () => {
         expect(handler.normalizeNetworkName(null)).toBe("mainnet");
       });
 
-      it("should normalize main to mainnet", () => {
-        expect(handler.normalizeNetworkName("main")).toBe("mainnet");
-        expect(handler.normalizeNetworkName("MAIN")).toBe("mainnet");
+      it("should lowercase network names", () => {
+        expect(handler.normalizeNetworkName("MAINNET")).toBe("mainnet");
+        expect(handler.normalizeNetworkName("Mainnet")).toBe("mainnet");
       });
 
-      it("should normalize test to testnet", () => {
-        expect(handler.normalizeNetworkName("test")).toBe("testnet");
-        expect(handler.normalizeNetworkName("TEST")).toBe("testnet");
+      it("should pass through testnet lowercase", () => {
+        expect(handler.normalizeNetworkName("TESTNET")).toBe("testnet");
+        expect(handler.normalizeNetworkName("Testnet")).toBe("testnet");
       });
 
       it("should preserve mainnet/testnet", () => {
@@ -99,86 +101,95 @@ describe("1Money Handler", () => {
       });
     });
 
-    describe("getNetworkPassphrase", () => {
-      it("should return mainnet passphrase", () => {
-        expect(handler.getNetworkPassphrase("mainnet")).toBe(
-          "1Money Mainnet ; 2024"
-        );
-      });
-
-      it("should return testnet passphrase", () => {
-        expect(handler.getNetworkPassphrase("testnet")).toBe(
-          "1Money Testnet ; 2024"
-        );
-      });
-
-      it("should throw for unknown network", () => {
-        expect(() => handler.getNetworkPassphrase("unknown")).toThrow(
-          /Unknown 1Money network/
-        );
-      });
-    });
-
     describe("getNetworkConfig", () => {
-      it("should return mainnet config", () => {
+      it("should return mainnet config with chainId", () => {
         const config = handler.getNetworkConfig("mainnet");
         expect(config).toBeDefined();
-        expect(config.name).toBe("1Money Mainnet");
+        expect(config.chainId).toBe(1212101);
         expect(config.isTestnet).toBe(false);
       });
 
-      it("should return testnet config", () => {
+      it("should return testnet config with chainId", () => {
         const config = handler.getNetworkConfig("testnet");
         expect(config).toBeDefined();
-        expect(config.name).toBe("1Money Testnet");
+        expect(config.chainId).toBe(1212101);
         expect(config.isTestnet).toBe(true);
       });
 
       it("should return null for unknown network", () => {
-        const config = handler.getNetworkConfig("unknownnet");
+        const config = handler.getNetworkConfig("unknown");
         expect(config).toBeNull();
       });
     });
 
     describe("parseTransaction", () => {
-      it("should reject non-base64 encoding", () => {
+      it("should reject unsupported encoding", () => {
         expect(() => {
-          handler.parseTransaction("test", "hex", "mainnet");
-        }).toThrow(/only supports base64 encoding/);
+          handler.parseTransaction("test", "base64", "mainnet");
+        }).toThrow(/1Money supports/);
+      });
+
+      it("should parse valid JSON transaction", () => {
+        const tx = JSON.stringify({
+          chain_id: 1212101,
+          nonce: 1,
+          recipient: "0x742d35Cc6634C0532925a3b844Bc9e7595f8fEc5",
+          token: "0x0000000000000000000000000000000000000001",
+          value: "1000000",
+        });
+        const parsed = handler.parseTransaction(tx, "json", "mainnet");
+        expect(parsed).toBeDefined();
+        expect(parsed.chainId).toBe(1212101);
+        expect(parsed.nonce).toBe(1);
       });
     });
 
     describe("serializeTransaction", () => {
-      it("should reject non-base64 encoding", () => {
+      it("should reject unsupported encoding", () => {
         expect(() => {
-          handler.serializeTransaction({}, "hex");
-        }).toThrow(/only supports base64 encoding/);
+          handler.serializeTransaction({}, "base64");
+        }).toThrow(/1Money supports/);
+      });
+
+      it("should serialize to JSON", () => {
+        const tx = {
+          chainId: 1212101,
+          nonce: 1,
+          recipient: "0x742d35Cc6634C0532925a3b844Bc9e7595f8fEc5",
+          token: "0x0000000000000000000000000000000000000001",
+          value: "1000000",
+        };
+        const serialized = handler.serializeTransaction(tx, "json");
+        const parsed = JSON.parse(serialized);
+        expect(parsed.chain_id).toBe(1212101);
+        expect(parsed.nonce).toBe(1);
       });
     });
   });
 
   describe("1Money vs EVM comparison", () => {
-    it("should use different key formats", () => {
+    it("should share EVM-compatible key format (secp256k1, 0x addresses)", () => {
       const onemoneyHandler = getHandler("onemoney");
       const evmHandler = getHandler("ethereum");
 
-      // 1Money uses Stellar-format keys (G-prefixed)
+      // Both accept 0x-prefixed EVM addresses
+      const evmAddress = "0x742d35Cc6634C0532925a3b844Bc9e7595f8fEc5";
+      expect(onemoneyHandler.isValidPublicKey(evmAddress)).toBe(true);
+      expect(evmHandler.isValidPublicKey(evmAddress)).toBe(true);
+
+      // Neither accepts Stellar-format keys
       const stellarKey =
         "GBJVUCDVNUM3UASLDXPBDXLHJBSVOEGTJX5J6P3JD7DQKVQCYCBY5PP2";
-      expect(onemoneyHandler.isValidPublicKey(stellarKey)).toBe(true);
+      expect(onemoneyHandler.isValidPublicKey(stellarKey)).toBe(false);
       expect(evmHandler.isValidPublicKey(stellarKey)).toBe(false);
-
-      // EVM uses 0x-prefixed addresses
-      const evmAddress = "0x742d35Cc6634C0532925a3b844Bc9e7595f8fEc5";
-      expect(evmHandler.isValidPublicKey(evmAddress)).toBe(true);
-      expect(onemoneyHandler.isValidPublicKey(evmAddress)).toBe(false);
     });
 
-    it("should use different encodings", () => {
+    it("should use different default encodings", () => {
       const onemoneyHandler = getHandler("onemoney");
       const evmHandler = getHandler("ethereum");
 
-      expect(onemoneyHandler.config.defaultEncoding).toBe("base64");
+      // 1Money uses JSON encoding, standard EVM uses hex
+      expect(onemoneyHandler.config.defaultEncoding).toBe("json");
       expect(evmHandler.config.defaultEncoding).toBe("hex");
     });
   });

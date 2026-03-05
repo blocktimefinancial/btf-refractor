@@ -11,6 +11,7 @@ const handlerFactory = require("./handler-factory");
 const stellarHandler = require("./stellar-handler");
 const onemoneyHandler = require("./onemoney-handler");
 const algorandHandler = require("./algorand-handler");
+const solanaHandler = require("./solana-handler");
 const evmHandler = require("./evm-handler");
 
 module.exports = {
@@ -24,6 +25,7 @@ module.exports = {
   stellarHandler,
   onemoneyHandler,
   algorandHandler,
+  solanaHandler,
 
   // EVM handler module
   EvmHandler: evmHandler.EvmHandler,

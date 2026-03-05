@@ -51,6 +51,11 @@ function getHandler(blockchain) {
         handlers[normalizedBlockchain] = require("./algorand-handler");
         break;
 
+      // Solana (ed25519, base58 addresses)
+      case "solana":
+        handlers[normalizedBlockchain] = require("./solana-handler");
+        break;
+
       // EVM-compatible blockchains
       case "ethereum":
       case "polygon":
@@ -62,9 +67,6 @@ function getHandler(blockchain) {
         break;
 
       // Future blockchain handlers will be added here:
-      // case 'solana':
-      //   handlers[normalizedBlockchain] = require('./solana-handler');
-      //   break;
 
       default:
         // Check if it's an EVM chain we might have missed
@@ -105,6 +107,7 @@ function hasHandler(blockchain) {
     "stellar",
     "onemoney",
     "algorand",
+    "solana",
     "ethereum",
     "polygon",
     "arbitrum",
@@ -128,6 +131,7 @@ function getImplementedBlockchains() {
     "stellar",
     "onemoney",
     "algorand",
+    "solana",
     "ethereum",
     "polygon",
     "arbitrum",
