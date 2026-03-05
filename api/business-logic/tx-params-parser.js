@@ -17,11 +17,22 @@ const { StrKey } = require("@stellar/stellar-sdk"),
  * @param {Array<String>} [request.desiredSigners] - Desired signers
  * @param {Number} [request.expires] - Expiration timestamp
  * @param {String|Object} [request.txJson] - JSON representation of the transaction
+ * @param {String} [request.originator] - Originator public key
+ * @param {String} [request.originatorSignature] - Originator's signature of tx hash
  * @returns {TxModel}
  */
 function parseTxParams(
   tx,
-  { network, callbackUrl, submit, desiredSigners, expires = 0, txJson }
+  {
+    network,
+    callbackUrl,
+    submit,
+    desiredSigners,
+    expires = 0,
+    txJson,
+    originator,
+    originatorSignature,
+  }
 ) {
   const now = getUnixTimestamp();
   const txInfo = new TxModel();
@@ -39,6 +50,14 @@ function parseTxParams(
   if (txJson) {
     txInfo.txJson =
       typeof txJson === "string" ? txJson : JSON.stringify(txJson);
+  }
+
+  // Store originator attestation if provided
+  if (originator) {
+    txInfo.originator = originator;
+  }
+  if (originatorSignature) {
+    txInfo.originatorSignature = originatorSignature;
   }
 
   if (callbackUrl) {
@@ -118,6 +137,8 @@ function parseTxParams(
  * @param {Array<string>} [request.desiredSigners] - Desired signers
  * @param {number} [request.minTime] - Minimum time
  * @param {number} [request.maxTime] - Maximum time / expiration
+ * @param {string} [request.originator] - Originator public key/address
+ * @param {string} [request.originatorSignature] - Originator's signature of tx hash
  * @param {Object} [request.legacy] - Legacy format fields
  * @returns {TxModel}
  */
@@ -129,6 +150,8 @@ function parseBlockchainAgnosticParams(request) {
     encoding,
     txUri,
     txJson,
+    originator,
+    originatorSignature,
     callbackUrl,
     submit,
     desiredSigners,
@@ -174,6 +197,14 @@ function parseBlockchainAgnosticParams(request) {
   if (txJson) {
     txInfo.txJson =
       typeof txJson === "string" ? txJson : JSON.stringify(txJson);
+  }
+
+  // Store originator attestation if provided
+  if (originator) {
+    txInfo.originator = originator;
+  }
+  if (originatorSignature) {
+    txInfo.originatorSignature = originatorSignature;
   }
 
   // Legacy fields for Stellar compatibility

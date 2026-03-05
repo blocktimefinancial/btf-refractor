@@ -41,6 +41,7 @@ const EVM_BLOCKCHAINS = [
   "optimism",
   "base",
   "avalanche",
+  "onemoney",
 ];
 
 /**
@@ -75,7 +76,7 @@ class EvmHandler extends BlockchainHandler {
     if (encoding !== "hex") {
       throw standardError(
         400,
-        `EVM chains only support hex encoding, got: ${encoding}`
+        `EVM chains only support hex encoding, got: ${encoding}`,
       );
     }
 
@@ -102,7 +103,7 @@ class EvmHandler extends BlockchainHandler {
         });
         throw standardError(
           400,
-          `Transaction chain ID (${parsedTx.chainId}) does not match network ${networkName} (${networkConfig.chainId})`
+          `Transaction chain ID (${parsedTx.chainId}) does not match network ${networkName} (${networkConfig.chainId})`,
         );
       }
     }
@@ -208,7 +209,7 @@ class EvmHandler extends BlockchainHandler {
       // Reconstruct the signed transaction to recover the signer
       const signedTx = serializeTransaction(
         parseTransaction(serializedUnsignedTx),
-        { v, r, s }
+        { v, r, s },
       );
 
       // Recover the address from the signature
@@ -376,7 +377,7 @@ class EvmHandler extends BlockchainHandler {
     if (recoveredAddress) {
       // Check if recovered address is in potential signers
       const matchedKey = potentialSigners.find(
-        (addr) => addr.toLowerCase() === recoveredAddress
+        (addr) => addr.toLowerCase() === recoveredAddress,
       );
 
       return {
@@ -466,12 +467,12 @@ class EvmHandler extends BlockchainHandler {
     if (callbackUrl) {
       if (
         !/^http(s)?:\/\/[-a-zA-Z0-9_+.]{2,256}\.[a-z]{2,4}\b(\/[-a-zA-Z0-9@:%_+.~#?&/=]*)?$/m.test(
-          callbackUrl
+          callbackUrl,
         )
       ) {
         throw standardError(
           400,
-          'Invalid URL supplied in "callbackUrl" parameter.'
+          'Invalid URL supplied in "callbackUrl" parameter.',
         );
       }
       params.callbackUrl = callbackUrl;
@@ -482,14 +483,14 @@ class EvmHandler extends BlockchainHandler {
       if (!Array.isArray(desiredSigners)) {
         throw standardError(
           400,
-          'Invalid "desiredSigners" parameter. Expected an array of EVM addresses.'
+          'Invalid "desiredSigners" parameter. Expected an array of EVM addresses.',
         );
       }
       for (const addr of desiredSigners) {
         if (!this.isValidPublicKey(addr)) {
           throw standardError(
             400,
-            `Invalid "desiredSigners" parameter. Address ${addr} is not a valid EVM address.`
+            `Invalid "desiredSigners" parameter. Address ${addr} is not a valid EVM address.`,
           );
         }
       }
@@ -502,13 +503,13 @@ class EvmHandler extends BlockchainHandler {
       if (expires > 2147483647 || expires < 0) {
         throw standardError(
           400,
-          `Invalid "expires" parameter. ${expires} is not a valid UNIX date.`
+          `Invalid "expires" parameter. ${expires} is not a valid UNIX date.`,
         );
       }
       if (expires < now) {
         throw standardError(
           400,
-          `Invalid "expires" parameter. ${expires} date has already passed.`
+          `Invalid "expires" parameter. ${expires} date has already passed.`,
         );
       }
       params.maxTime = expires;

@@ -546,4 +546,149 @@ describe("Request Adapter", () => {
       });
     });
   });
+
+  // ============================================================================
+  // Originator Field Tests
+  // ============================================================================
+  describe("originator field handling", () => {
+    const validOriginator =
+      "GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF";
+    const validOriginatorSignature = "dGVzdHNpZ25hdHVyZQ=="; // base64 "testsignature"
+
+    describe("normalizeLegacyRequest with originator", () => {
+      it("should include originator in normalized request", () => {
+        const result = normalizeLegacyRequest({
+          xdr: validXdr,
+          network: 0,
+          originator: validOriginator,
+        });
+
+        expect(result.originator).toBe(validOriginator);
+        expect(result.originatorSignature).toBeNull();
+      });
+
+      it("should include both originator and originatorSignature", () => {
+        const result = normalizeLegacyRequest({
+          xdr: validXdr,
+          network: 0,
+          originator: validOriginator,
+          originatorSignature: validOriginatorSignature,
+        });
+
+        expect(result.originator).toBe(validOriginator);
+        expect(result.originatorSignature).toBe(validOriginatorSignature);
+      });
+
+      it("should handle missing originator fields", () => {
+        const result = normalizeLegacyRequest({
+          xdr: validXdr,
+          network: 0,
+        });
+
+        expect(result.originator).toBeNull();
+        expect(result.originatorSignature).toBeNull();
+      });
+    });
+
+    describe("normalizeTxUriRequest with originator", () => {
+      it("should include originator fields", () => {
+        const result = normalizeTxUriRequest({
+          txUri: `tx:stellar:public;base64,${validXdr}`,
+          originator: validOriginator,
+          originatorSignature: validOriginatorSignature,
+        });
+
+        expect(result.originator).toBe(validOriginator);
+        expect(result.originatorSignature).toBe(validOriginatorSignature);
+      });
+
+      it("should handle missing originator fields", () => {
+        const result = normalizeTxUriRequest({
+          txUri: `tx:stellar:public;base64,${validXdr}`,
+        });
+
+        expect(result.originator).toBeNull();
+        expect(result.originatorSignature).toBeNull();
+      });
+    });
+
+    describe("normalizeComponentRequest with originator", () => {
+      it("should include originator fields", () => {
+        const result = normalizeComponentRequest({
+          blockchain: "stellar",
+          networkName: "public",
+          payload: validXdr,
+          originator: validOriginator,
+          originatorSignature: validOriginatorSignature,
+        });
+
+        expect(result.originator).toBe(validOriginator);
+        expect(result.originatorSignature).toBe(validOriginatorSignature);
+      });
+
+      it("should handle Ethereum originator format", () => {
+        const ethOriginator = "0x1234567890123456789012345678901234567890";
+        const ethSignature = "0xabcdef123456";
+
+        const result = normalizeComponentRequest({
+          blockchain: "ethereum",
+          networkName: "mainnet",
+          payload: "0xabc123",
+          encoding: "hex",
+          originator: ethOriginator,
+          originatorSignature: ethSignature,
+        });
+
+        expect(result.originator).toBe(ethOriginator);
+        expect(result.originatorSignature).toBe(ethSignature);
+      });
+
+      it("should handle missing originator fields", () => {
+        const result = normalizeComponentRequest({
+          blockchain: "stellar",
+          networkName: "public",
+          payload: validXdr,
+        });
+
+        expect(result.originator).toBeNull();
+        expect(result.originatorSignature).toBeNull();
+      });
+    });
+
+    describe("normalizeRequest with originator", () => {
+      it("should include originator in normalized legacy request", () => {
+        const result = normalizeRequest({
+          xdr: validXdr,
+          network: 0,
+          originator: validOriginator,
+          originatorSignature: validOriginatorSignature,
+        });
+
+        expect(result.originator).toBe(validOriginator);
+        expect(result.originatorSignature).toBe(validOriginatorSignature);
+      });
+
+      it("should include originator in normalized txUri request", () => {
+        const result = normalizeRequest({
+          txUri: `tx:stellar:public;base64,${validXdr}`,
+          originator: validOriginator,
+        });
+
+        expect(result.originator).toBe(validOriginator);
+      });
+
+      it("should include originator in normalized component request", () => {
+        const result = normalizeRequest({
+          blockchain: "stellar",
+          networkName: "public",
+          payload: validXdr,
+          originator: validOriginator,
+          originatorSignature: validOriginatorSignature,
+        });
+
+        expect(result.originator).toBe(validOriginator);
+        expect(result.originatorSignature).toBe(validOriginatorSignature);
+      });
+    });
+  });
 });

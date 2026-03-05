@@ -10,6 +10,7 @@ const BlockchainHandler = require("./blockchain-handler");
 const handlerFactory = require("./handler-factory");
 const stellarHandler = require("./stellar-handler");
 const onemoneyHandler = require("./onemoney-handler");
+const algorandHandler = require("./algorand-handler");
 const evmHandler = require("./evm-handler");
 
 module.exports = {
@@ -22,6 +23,7 @@ module.exports = {
   // Individual handlers (for direct access if needed)
   stellarHandler,
   onemoneyHandler,
+  algorandHandler,
 
   // EVM handler module
   EvmHandler: evmHandler.EvmHandler,

@@ -135,6 +135,21 @@ const txModelSchema = Joi.object({
       "JSON representation of the transaction for human readability"
     ),
 
+  // ---- Originator (transaction creator attestation) ----
+  originator: Joi.string()
+    .max(256)
+    .allow(null)
+    .description(
+      "Public key or address of the transaction originator (format depends on blockchain)"
+    ),
+
+  originatorSignature: Joi.string()
+    .max(1024)
+    .allow(null)
+    .description(
+      "Signature of the transaction hash by the originator, proving authorship"
+    ),
+
   // ---- Legacy Stellar fields (kept for backward compatibility) ----
   network: Joi.number()
     .integer()

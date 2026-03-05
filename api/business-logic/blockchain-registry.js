@@ -276,23 +276,25 @@ const BLOCKCHAIN_REGISTRY = {
 
   onemoney: {
     name: "1Money",
-    defaultEncoding: "base64",
-    supportedEncodings: ["base64"],
+    defaultEncoding: "json",
+    supportedEncodings: ["json", "hex"],
     keyFormat: {
-      type: "ed25519",
-      publicKeyPrefix: "G",
-      publicKeyLength: 56,
-      signatureEncoding: "base64",
+      type: "secp256k1",
+      addressPrefix: "0x",
+      addressLength: 42,
+      signatureEncoding: "hex",
     },
     networks: {
       mainnet: {
         name: "1Money Mainnet",
-        passphrase: "1Money Mainnet ; 2024",
+        chainId: 1212101,
+        rpc: "https://api.1money.network",
         isTestnet: false,
       },
       testnet: {
         name: "1Money Testnet",
-        passphrase: "1Money Testnet ; 2024",
+        chainId: 1212101,
+        rpc: "https://api.testnet.1money.network",
         isTestnet: true,
       },
     },

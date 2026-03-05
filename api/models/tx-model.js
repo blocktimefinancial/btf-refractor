@@ -58,6 +58,25 @@ class TxModel {
   txJson = null;
 
   // ============================================================================
+  // Originator (Transaction Creator Attestation)
+  // ============================================================================
+
+  /**
+   * Public key or address of the transaction originator.
+   * Format depends on blockchain (e.g., G... for Stellar, 0x... for EVM).
+   * The originator signs the transaction hash to prove authorship.
+   * @type {String|null}
+   */
+  originator = null;
+
+  /**
+   * Signature of the transaction hash by the originator.
+   * Allows signers to verify that the transaction was created by a trusted party.
+   * @type {String|null}
+   */
+  originatorSignature = null;
+
+  // ============================================================================
   // Legacy Stellar Fields (kept for backward compatibility)
   // ============================================================================
 

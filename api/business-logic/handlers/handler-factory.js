@@ -41,9 +41,14 @@ function getHandler(blockchain) {
         handlers[normalizedBlockchain] = require("./stellar-handler");
         break;
 
-      // 1Money network (uses Stellar-compatible format)
+      // 1Money network (EVM-compatible secp256k1 keys and signatures)
       case "onemoney":
         handlers[normalizedBlockchain] = require("./onemoney-handler");
+        break;
+
+      // Algorand (ed25519, same curve as Stellar)
+      case "algorand":
+        handlers[normalizedBlockchain] = require("./algorand-handler");
         break;
 
       // EVM-compatible blockchains
@@ -70,7 +75,7 @@ function getHandler(blockchain) {
         }
         throw standardError(
           501,
-          `Blockchain '${blockchain}' is recognized but handler is not yet implemented`
+          `Blockchain '${blockchain}' is recognized but handler is not yet implemented`,
         );
     }
   } catch (e) {
@@ -99,6 +104,7 @@ function hasHandler(blockchain) {
   const implementedHandlers = [
     "stellar",
     "onemoney",
+    "algorand",
     "ethereum",
     "polygon",
     "arbitrum",
@@ -121,6 +127,7 @@ function getImplementedBlockchains() {
   return [
     "stellar",
     "onemoney",
+    "algorand",
     "ethereum",
     "polygon",
     "arbitrum",
@@ -166,13 +173,13 @@ async function getPotentialSigners(
   blockchain,
   transaction,
   networkName,
-  options = {}
+  options = {},
 ) {
   const handler = getHandler(blockchain);
   return handler.getPotentialSigners(
     transaction,
     networkName,
-    options.accountsInfo
+    options.accountsInfo,
   );
 }
 

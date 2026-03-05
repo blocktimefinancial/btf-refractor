@@ -63,6 +63,13 @@ function rehydrateTx(txInfo) {
     if (txInfo.txJson) {
       res.txJson = txInfo.txJson;
     }
+    // Include originator fields if present
+    if (txInfo.originator) {
+      res.originator = txInfo.originator;
+    }
+    if (txInfo.originatorSignature) {
+      res.originatorSignature = txInfo.originatorSignature;
+    }
   } else {
     // Generic blockchain handling (future)
     res.blockchain = blockchain;
@@ -73,6 +80,13 @@ function rehydrateTx(txInfo) {
     // Include txJson if present
     if (txInfo.txJson) {
       res.txJson = txInfo.txJson;
+    }
+    // Include originator fields if present
+    if (txInfo.originator) {
+      res.originator = txInfo.originator;
+    }
+    if (txInfo.originatorSignature) {
+      res.originatorSignature = txInfo.originatorSignature;
     }
     // Keep legacy xdr for backward compatibility if present
     if (xdr) {

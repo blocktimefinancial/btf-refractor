@@ -127,6 +127,54 @@ export default withErrorBoundary(function TxPropsView({ txInfo }) {
         </div>
       )}
       {tx && <TxPreconditionsView tx={tx} />}
+
+      {/* Originator attestation */}
+      {txInfo.originator && (
+        <div className="micro-space">
+          <span className="dimmed">Originator:</span>{" "}
+          {isStellar ? (
+            <>
+              <AccountAddress account={txInfo.originator} chars={12} />
+              <CopyToClipboard text={txInfo.originator} />
+            </>
+          ) : (
+            <>
+              <BlockSelect inline className="condensed">
+                {txInfo.originator}
+              </BlockSelect>
+              <CopyToClipboard text={txInfo.originator} />
+            </>
+          )}
+          <InfoTooltip>
+            The public key or address of the transaction creator. Signers can
+            verify this to ensure the transaction came from a trusted source.
+          </InfoTooltip>
+          {txInfo.originatorSignature && (
+            <span
+              className="text-small dimmed"
+              style={{ marginLeft: "0.5rem" }}
+            >
+              <i className="icon-ok color-success" /> signed
+            </span>
+          )}
+        </div>
+      )}
+      {txInfo.originator && txInfo.originatorSignature && (
+        <div className="micro-space">
+          <span className="dimmed">Originator Signature:</span>{" "}
+          <BlockSelect inline className="condensed text-tiny">
+            {txInfo.originatorSignature.length > 32
+              ? txInfo.originatorSignature.substring(0, 32) + "..."
+              : txInfo.originatorSignature}
+          </BlockSelect>
+          <CopyToClipboard text={txInfo.originatorSignature} />
+          <InfoTooltip>
+            Cryptographic signature proving that the transaction was created by
+            the specified originator. This is the originator&apos;s signature of
+            the transaction hash.
+          </InfoTooltip>
+        </div>
+      )}
     </div>
   );
 });

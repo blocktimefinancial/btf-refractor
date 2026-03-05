@@ -60,6 +60,8 @@ export default function AddTxView() {
     callback: "",
     expires: "",
     desiredSigners: [],
+    originator: "",
+    originatorSignature: "",
   });
   const [inProgress, setInProgress] = useState(false);
 
@@ -120,6 +122,16 @@ export default function AddTxView() {
 
   const changeExpires = useCallback(
     (e) => setParam("expires", e.target.value),
+    [setParam]
+  );
+
+  const changeOriginator = useCallback(
+    (e) => setParam("originator", e.target.value.trim()),
+    [setParam]
+  );
+
+  const changeOriginatorSignature = useCallback(
+    (e) => setParam("originatorSignature", e.target.value.trim()),
     [setParam]
   );
 
@@ -276,6 +288,65 @@ export default function AddTxView() {
             placeholder="UNIX timestamp or ISO date, like 2020-11-29T09:29:13Z"
           />
         </TxPropsBlock>
+
+        <TxPropsBlock
+          title="Originator"
+          optional
+          description={
+            <>
+              Public key or address of the transaction creator. This allows
+              signers to verify who created the transaction before signing.
+              Format depends on blockchain (e.g., G... for Stellar, 0x... for
+              EVM).
+            </>
+          }
+        >
+          <input
+            type="text"
+            value={data.originator}
+            onChange={changeOriginator}
+            placeholder={
+              data.blockchain === "stellar" || data.blockchain === "onemoney"
+                ? "Stellar public key (G...)"
+                : data.blockchain === "ethereum" ||
+                  [
+                    "polygon",
+                    "arbitrum",
+                    "optimism",
+                    "base",
+                    "avalanche",
+                  ].includes(data.blockchain)
+                ? "Ethereum address (0x...)"
+                : "Public key or address"
+            }
+          />
+        </TxPropsBlock>
+
+        {data.originator && (
+          <TxPropsBlock
+            title="Originator Signature"
+            optional
+            description={
+              <>
+                Signature of the transaction hash by the originator. This proves
+                the transaction was created by the specified originator. The
+                originator signs the transaction hash with their private key.
+              </>
+            }
+          >
+            <input
+              type="text"
+              value={data.originatorSignature}
+              onChange={changeOriginatorSignature}
+              placeholder={
+                data.blockchain === "stellar" || data.blockchain === "onemoney"
+                  ? "Base64-encoded signature"
+                  : "Hex-encoded signature (0x...)"
+              }
+            />
+          </TxPropsBlock>
+        )}
+
         {/*<div>
                 <label>Desired signers</label>
                 <DesiredTxSignersView signers={data.desiredSigners}

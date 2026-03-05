@@ -199,6 +199,37 @@ export async function validateNewTx(data) {
     res.desiredSigners = nonEmptySigners;
   }
 
+  // Originator attestation (optional)
+  if (data.originator) {
+    // Validate originator key format based on blockchain
+    const blockchain =
+      data.blockchain || (data.network ? "stellar" : defaultBlockchain);
+    if (blockchain === "stellar" || blockchain === "onemoney") {
+      if (!StrKey.isValidEd25519PublicKey(data.originator)) {
+        throw new Error("Invalid originator public key");
+      }
+    } else if (
+      [
+        "ethereum",
+        "polygon",
+        "arbitrum",
+        "optimism",
+        "base",
+        "avalanche",
+      ].includes(blockchain)
+    ) {
+      if (!/^0x[a-fA-F0-9]{40}$/.test(data.originator)) {
+        throw new Error("Invalid originator address");
+      }
+    }
+    res.originator = data.originator;
+
+    // Include signature if provided
+    if (data.originatorSignature) {
+      res.originatorSignature = data.originatorSignature;
+    }
+  }
+
   return res;
 }
 

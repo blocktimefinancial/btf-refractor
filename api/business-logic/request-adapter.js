@@ -27,6 +27,8 @@ const logger = require("../utils/logger").forComponent("request-adapter");
  * @property {string} encoding - Payload encoding (base64, hex, base58, etc.)
  * @property {string} txUri - Full transaction URI
  * @property {string|Object} [txJson] - JSON representation of the transaction
+ * @property {string} [originator] - Public key/address of transaction originator
+ * @property {string} [originatorSignature] - Originator's signature of the tx hash
  * @property {string} [callbackUrl] - Optional callback URL
  * @property {boolean} [submit] - Whether to auto-submit when ready
  * @property {Array<string>} [desiredSigners] - List of desired signer keys
@@ -114,8 +116,17 @@ function detectRequestFormat(body) {
  * @returns {NormalizedRequest} Normalized request
  */
 function normalizeLegacyRequest(body) {
-  const { xdr, network, callbackUrl, submit, desiredSigners, expires, txJson } =
-    body;
+  const {
+    xdr,
+    network,
+    callbackUrl,
+    submit,
+    desiredSigners,
+    expires,
+    txJson,
+    originator,
+    originatorSignature,
+  } = body;
 
   // Resolve network name from ID or string
   let networkName;
@@ -150,6 +161,8 @@ function normalizeLegacyRequest(body) {
     encoding: "base64",
     txUri,
     txJson: normalizedTxJson,
+    originator: originator || null,
+    originatorSignature: originatorSignature || null,
     callbackUrl,
     submit: submit === true,
     desiredSigners: desiredSigners || [],
@@ -176,6 +189,8 @@ function normalizeTxUriRequest(body) {
     minTime,
     maxTime,
     txJson,
+    originator,
+    originatorSignature,
   } = body;
 
   // Normalize txJson (stringify if object)
@@ -217,6 +232,8 @@ function normalizeTxUriRequest(body) {
     encoding,
     txUri,
     txJson: normalizedTxJson,
+    originator: originator || null,
+    originatorSignature: originatorSignature || null,
     callbackUrl,
     submit: submit === true,
     desiredSigners: desiredSigners || [],
@@ -243,6 +260,8 @@ function normalizeComponentRequest(body) {
     minTime,
     maxTime,
     txJson,
+    originator,
+    originatorSignature,
   } = body;
 
   // Normalize txJson (stringify if object)
@@ -283,6 +302,8 @@ function normalizeComponentRequest(body) {
     encoding,
     txUri,
     txJson: normalizedTxJson,
+    originator: originator || null,
+    originatorSignature: originatorSignature || null,
     callbackUrl,
     submit: submit === true,
     desiredSigners: desiredSigners || [],
