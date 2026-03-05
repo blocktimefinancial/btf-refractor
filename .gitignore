@@ -44,3 +44,6 @@ app.config.json
 
 # Environment variables
 .env
+
+# External dependency (symlinked from workspace)
+btf-lib-v1
