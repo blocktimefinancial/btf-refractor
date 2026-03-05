@@ -19,9 +19,7 @@ const {
 
 function createFullMockHsmKeyStore() {
   return {
-    signStellarTransaction: jest
-      .fn()
-      .mockResolvedValue("signed-stellar-xdr"),
+    signStellarTransaction: jest.fn().mockResolvedValue("signed-stellar-xdr"),
     signAlgorandTransaction: jest.fn().mockResolvedValue({
       signedTxn: new Uint8Array(64),
       txId: "ALGO_TX_001",
@@ -200,9 +198,9 @@ describe("HSM Adapter — Integration Tests (Mocked)", () => {
         mockKs[chain.mockFn].mockRejectedValue(HSM_ERROR);
         const adapter = new HsmSigningAdapter({ hsmKeyStore: mockKs });
 
-        await expect(
-          adapter[chain.method](...chain.args),
-        ).rejects.toThrow("HSM connection timeout");
+        await expect(adapter[chain.method](...chain.args)).rejects.toThrow(
+          "HSM connection timeout",
+        );
       });
     }
 
@@ -360,17 +358,17 @@ describe("HSM Adapter — Integration Tests (Mocked)", () => {
     it("should reject non-string keyId types", async () => {
       const adapter = new HsmSigningAdapter({ hsmKeyStore: mockKs });
 
-      await expect(
-        adapter.signStellarTransaction(123, {}),
-      ).rejects.toThrow(/keyId must be a non-empty string/);
+      await expect(adapter.signStellarTransaction(123, {})).rejects.toThrow(
+        /keyId must be a non-empty string/,
+      );
 
       await expect(
         adapter.signStellarTransaction(undefined, {}),
       ).rejects.toThrow(/keyId must be a non-empty string/);
 
-      await expect(
-        adapter.signStellarTransaction({}, {}),
-      ).rejects.toThrow(/keyId must be a non-empty string/);
+      await expect(adapter.signStellarTransaction({}, {})).rejects.toThrow(
+        /keyId must be a non-empty string/,
+      );
     });
 
     it("sign() should be case-insensitive for blockchain names", async () => {

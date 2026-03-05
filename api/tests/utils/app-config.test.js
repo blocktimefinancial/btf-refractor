@@ -151,8 +151,7 @@ describe("app.config.js — HSM config", () => {
     });
 
     it("should read AZURE_ATTESTATION_URL", () => {
-      process.env.AZURE_ATTESTATION_URL =
-        "https://shared.eus.attest.azure.net";
+      process.env.AZURE_ATTESTATION_URL = "https://shared.eus.attest.azure.net";
       const config = loadConfig();
       expect(config.confidentialComputing.attestationUrl).toBe(
         "https://shared.eus.attest.azure.net",

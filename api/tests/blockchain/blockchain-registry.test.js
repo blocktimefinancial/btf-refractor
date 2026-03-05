@@ -178,12 +178,12 @@ describe("Blockchain Registry", () => {
       expect(Array.isArray(testNets)).toBe(true);
 
       const stellarTestnet = testNets.find(
-        (n) => n.blockchain === "stellar" && n.network === "testnet"
+        (n) => n.blockchain === "stellar" && n.network === "testnet",
       );
       expect(stellarTestnet).toBeDefined();
 
       const ethSepolia = testNets.find(
-        (n) => n.blockchain === "ethereum" && n.network === "sepolia"
+        (n) => n.blockchain === "ethereum" && n.network === "sepolia",
       );
       expect(ethSepolia).toBeDefined();
     });
@@ -191,7 +191,7 @@ describe("Blockchain Registry", () => {
     it("should not include production networks", () => {
       const testNets = getTestNetworks();
       const stellarPublic = testNets.find(
-        (n) => n.blockchain === "stellar" && n.network === "public"
+        (n) => n.blockchain === "stellar" && n.network === "public",
       );
       expect(stellarPublic).toBeUndefined();
     });
@@ -203,12 +203,12 @@ describe("Blockchain Registry", () => {
       expect(Array.isArray(prodNets)).toBe(true);
 
       const stellarPublic = prodNets.find(
-        (n) => n.blockchain === "stellar" && n.network === "public"
+        (n) => n.blockchain === "stellar" && n.network === "public",
       );
       expect(stellarPublic).toBeDefined();
 
       const ethMainnet = prodNets.find(
-        (n) => n.blockchain === "ethereum" && n.network === "mainnet"
+        (n) => n.blockchain === "ethereum" && n.network === "mainnet",
       );
       expect(ethMainnet).toBeDefined();
     });
@@ -216,7 +216,7 @@ describe("Blockchain Registry", () => {
     it("should not include test networks", () => {
       const prodNets = getProductionNetworks();
       const stellarTestnet = prodNets.find(
-        (n) => n.blockchain === "stellar" && n.network === "testnet"
+        (n) => n.blockchain === "stellar" && n.network === "testnet",
       );
       expect(stellarTestnet).toBeUndefined();
     });
@@ -226,7 +226,7 @@ describe("Blockchain Registry", () => {
     it("should have correct network passphrases", () => {
       const publicNet = getNetworkConfig("stellar", "public");
       expect(publicNet.passphrase).toBe(
-        "Public Global Stellar Network ; September 2015"
+        "Public Global Stellar Network ; September 2015",
       );
 
       const testNet = getNetworkConfig("stellar", "testnet");

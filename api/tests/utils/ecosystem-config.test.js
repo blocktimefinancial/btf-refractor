@@ -49,7 +49,7 @@ describe("ecosystem.config.js", () => {
       expect(typeof app.cwd).toBe("string");
     });
 
-    it('should use cluster exec_mode with max instances', () => {
+    it("should use cluster exec_mode with max instances", () => {
       expect(app.exec_mode).toBe("cluster");
       expect(app.instances).toBe("max");
     });

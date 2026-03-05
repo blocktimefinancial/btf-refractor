@@ -73,7 +73,7 @@ const config = {
 console.log("Configuration loaded:");
 console.log(`- Storage: ${config.storage}`);
 console.log(
-  `- Database: ${config.db.replace(/\/\/[^:]+:[^@]+@/, "//***:***@")}`
+  `- Database: ${config.db.replace(/\/\/[^:]+:[^@]+@/, "//***:***@")}`,
 ); // Hide credentials
 console.log(`- Public Horizon: ${config.networks.public.horizon}`);
 console.log(`- Testnet Horizon: ${config.networks.testnet.horizon}`);
@@ -82,7 +82,7 @@ console.log(
     process.env.ADMIN_API_KEY
       ? "configured"
       : "NOT SET (admin endpoints disabled)"
-  }`
+  }`,
 );
 
 module.exports = config;

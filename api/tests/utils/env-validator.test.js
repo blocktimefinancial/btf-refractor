@@ -59,7 +59,7 @@ describe("Environment Validator", () => {
 
     it("should include MONGODB_URL in production required", () => {
       const mongoVar = envConfig.required.production.find(
-        (v) => v.name === "MONGODB_URL"
+        (v) => v.name === "MONGODB_URL",
       );
       expect(mongoVar).toBeDefined();
       expect(mongoVar.sensitive).toBe(true);
@@ -67,7 +67,7 @@ describe("Environment Validator", () => {
 
     it("should include AZURE_MANAGED_HSM_URL in production required", () => {
       const hsmVar = envConfig.required.production.find(
-        (v) => v.name === "AZURE_MANAGED_HSM_URL"
+        (v) => v.name === "AZURE_MANAGED_HSM_URL",
       );
       expect(hsmVar).toBeDefined();
       expect(hsmVar.sensitive).toBe(false);
@@ -75,14 +75,14 @@ describe("Environment Validator", () => {
 
     it("should include HSM_MASTER_KEK_NAME in production required", () => {
       const kekVar = envConfig.required.production.find(
-        (v) => v.name === "HSM_MASTER_KEK_NAME"
+        (v) => v.name === "HSM_MASTER_KEK_NAME",
       );
       expect(kekVar).toBeDefined();
     });
 
     it("should include ADMIN_API_KEY in recommended", () => {
       const adminVar = envConfig.recommended.find(
-        (v) => v.name === "ADMIN_API_KEY"
+        (v) => v.name === "ADMIN_API_KEY",
       );
       expect(adminVar).toBeDefined();
       expect(adminVar.sensitive).toBe(true);
@@ -137,7 +137,7 @@ describe("Environment Validator", () => {
 
         expect(result.warnings.length).toBeGreaterThan(0);
         const adminWarning = result.warnings.find(
-          (w) => w.variable === "ADMIN_API_KEY"
+          (w) => w.variable === "ADMIN_API_KEY",
         );
         expect(adminWarning).toBeDefined();
       });
@@ -167,7 +167,9 @@ describe("Environment Validator", () => {
 
         expect(result.valid).toBe(false);
         expect(result.errors.length).toBeGreaterThan(0);
-        const mongoErr = result.errors.find((e) => e.variable === "MONGODB_URL");
+        const mongoErr = result.errors.find(
+          (e) => e.variable === "MONGODB_URL",
+        );
         expect(mongoErr).toBeDefined();
       });
 
@@ -179,8 +181,12 @@ describe("Environment Validator", () => {
         const result = validateEnvironment({ exitOnError: false });
 
         expect(result.valid).toBe(false);
-        const hsmErr = result.errors.find((e) => e.variable === "AZURE_MANAGED_HSM_URL");
-        const kekErr = result.errors.find((e) => e.variable === "HSM_MASTER_KEK_NAME");
+        const hsmErr = result.errors.find(
+          (e) => e.variable === "AZURE_MANAGED_HSM_URL",
+        );
+        const kekErr = result.errors.find(
+          (e) => e.variable === "HSM_MASTER_KEK_NAME",
+        );
         expect(hsmErr).toBeDefined();
         expect(kekErr).toBeDefined();
       });

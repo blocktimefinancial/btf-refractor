@@ -5,8 +5,7 @@
  * is linked.
  */
 
-const NOT_CONFIGURED =
-  "btf-lib-v1 stub: envelopeEncryption is not configured.";
+const NOT_CONFIGURED = "btf-lib-v1 stub: envelopeEncryption is not configured.";
 
 function notConfigured(method) {
   return async function () {

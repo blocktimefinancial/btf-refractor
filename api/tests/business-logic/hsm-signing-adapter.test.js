@@ -143,10 +143,9 @@ describe("HsmSigningAdapter", () => {
       const adapter = new HsmSigningAdapter({
         hsmKeyStore: mockHsmKeyStore,
       });
-      const result = await adapter.signStellarTransaction(
-        "key_001",
-        { xdr: "test-xdr" },
-      );
+      const result = await adapter.signStellarTransaction("key_001", {
+        xdr: "test-xdr",
+      });
       expect(result).toBe("signed-xdr-base64");
       expect(mockHsmKeyStore.signStellarTransaction).toHaveBeenCalledWith({
         keyId: "key_001",
@@ -161,10 +160,9 @@ describe("HsmSigningAdapter", () => {
         azureCryptoService: mockAzureCrypto,
         hsmKeyStore: mockHsmKeyStore,
       });
-      const result = await adapter.signStellarTransaction(
-        "key_001",
-        { xdr: "test-xdr" },
-      );
+      const result = await adapter.signStellarTransaction("key_001", {
+        xdr: "test-xdr",
+      });
       expect(result).toBe("direct-signed-xdr-base64");
       expect(mockAzureCrypto.signStellarTransaction).toHaveBeenCalledWith({
         keyName: "key_001",
@@ -176,18 +174,18 @@ describe("HsmSigningAdapter", () => {
       const adapter = new HsmSigningAdapter({
         hsmKeyStore: mockHsmKeyStore,
       });
-      await expect(
-        adapter.signStellarTransaction("", {}),
-      ).rejects.toThrow(/keyId must be a non-empty string/);
+      await expect(adapter.signStellarTransaction("", {})).rejects.toThrow(
+        /keyId must be a non-empty string/,
+      );
     });
 
     it("should reject null keyId", async () => {
       const adapter = new HsmSigningAdapter({
         hsmKeyStore: mockHsmKeyStore,
       });
-      await expect(
-        adapter.signStellarTransaction(null, {}),
-      ).rejects.toThrow(/keyId must be a non-empty string/);
+      await expect(adapter.signStellarTransaction(null, {})).rejects.toThrow(
+        /keyId must be a non-empty string/,
+      );
     });
   });
 
@@ -341,9 +339,9 @@ describe("HsmSigningAdapter", () => {
     });
 
     it("should throw for unsupported blockchain", async () => {
-      await expect(
-        adapter.sign("cardano", "key_001", {}),
-      ).rejects.toThrow(/not supported for blockchain: cardano/);
+      await expect(adapter.sign("cardano", "key_001", {})).rejects.toThrow(
+        /not supported for blockchain: cardano/,
+      );
     });
   });
 

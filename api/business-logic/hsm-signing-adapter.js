@@ -329,7 +329,9 @@ class HsmSigningAdapter {
       case "avalanche":
         return this.signEvmTransaction(keyId, payload);
       default:
-        throw new Error(`HSM signing not supported for blockchain: ${blockchain}`);
+        throw new Error(
+          `HSM signing not supported for blockchain: ${blockchain}`,
+        );
     }
   }
 

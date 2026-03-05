@@ -21,12 +21,14 @@ const envConfig = {
       },
       {
         name: "AZURE_MANAGED_HSM_URL",
-        description: "Azure Managed HSM URL (e.g., https://refractor-hsm.managedhsm.azure.net)",
+        description:
+          "Azure Managed HSM URL (e.g., https://refractor-hsm.managedhsm.azure.net)",
         sensitive: false,
       },
       {
         name: "HSM_MASTER_KEK_NAME",
-        description: "HSM master Key Encryption Key name for envelope encryption",
+        description:
+          "HSM master Key Encryption Key name for envelope encryption",
         sensitive: false,
       },
     ],
@@ -127,7 +129,8 @@ const envConfig = {
     },
     {
       name: "REQUIRE_CVM_ATTESTATION",
-      description: "Require CVM TEE attestation before HSM access (true/false). Defaults to true in production.",
+      description:
+        "Require CVM TEE attestation before HSM access (true/false). Defaults to true in production.",
       default: "",
     },
     {
@@ -137,12 +140,14 @@ const envConfig = {
     },
     {
       name: "AZURE_ATTESTATION_URL",
-      description: "Azure Attestation Service URL (e.g., https://shared.eus.attest.azure.net)",
+      description:
+        "Azure Attestation Service URL (e.g., https://shared.eus.attest.azure.net)",
       default: "",
     },
     {
       name: "REDIS_URL",
-      description: "Azure Managed Redis connection URL for key metadata caching",
+      description:
+        "Azure Managed Redis connection URL for key metadata caching",
       default: "",
       sensitive: true,
     },
@@ -219,7 +224,7 @@ function validateEnvironment(options = {}) {
         console.error(`   - ${err.variable}: ${err.message}`);
       });
       console.error(
-        "\nPlease set these variables and restart the application.\n"
+        "\nPlease set these variables and restart the application.\n",
       );
       process.exit(1);
     }
