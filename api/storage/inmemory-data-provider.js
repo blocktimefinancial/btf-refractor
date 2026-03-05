@@ -26,9 +26,12 @@ class InMemoryDataProvider extends DataProvider {
         return true
     }
 
-    listTransactions(filter) {
-        const matchResult = Object.values(this.storage)
+    listTransactions(filter, options = {}) {
+        let matchResult = Object.values(this.storage)
             .filter(tx => matchPredicate(tx, filter))
+        if (options.limit) {
+            matchResult = matchResult.slice(0, options.limit)
+        }
         return {
             [Symbol.asyncIterator]() {
                 return {

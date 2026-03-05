@@ -18,7 +18,8 @@ class MongodbDataProvider extends DataProvider {
 
     const connection = await MongoClient.connect(config.db, options);
     this.db = connection.db();
-    console.log(`Connected to MongoDB data source ${this.db.databaseName}`);
+    const logger = require("../utils/logger").forComponent("mongodb-provider");
+    logger.info(`Connected to MongoDB data source ${this.db.databaseName}`);
   }
 
   /**

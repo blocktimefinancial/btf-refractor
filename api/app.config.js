@@ -332,20 +332,15 @@ const config = {
 };
 
 // Log configuration details (without sensitive info)
-console.log("Configuration loaded:");
-console.log(`- Storage: ${config.storage}`);
-console.log(
-  `- Database: ${config.db.replace(/\/\/[^:]+:[^@]+@/, "//***:***@")}`,
-); // Hide credentials
-console.log(`- Public Horizon: ${config.networks.public.horizon}`);
-console.log(`- Testnet Horizon: ${config.networks.testnet.horizon}`);
-console.log(
-  `- Admin API Key: ${
-    process.env.ADMIN_API_KEY
-      ? "configured"
-      : "NOT SET (admin endpoints disabled)"
-  }`,
-);
+// Use logger if available; fallback to console for very early init
+const _cfgLogger = (() => { try { return require("./utils/logger"); } catch { return console; } })();
+_cfgLogger.info("Configuration loaded", {
+  storage: config.storage,
+  db: config.db.replace(/\/\/[^:]+:[^@]+@/, "//***:***@"),
+  publicHorizon: config.networks.public.horizon,
+  testnetHorizon: config.networks.testnet.horizon,
+  adminApiKey: process.env.ADMIN_API_KEY ? "configured" : "NOT SET (admin endpoints disabled)",
+});
 
 // Export config as default, attach configGet as a utility
 config.configGet = configGet;

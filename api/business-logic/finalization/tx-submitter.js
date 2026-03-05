@@ -30,10 +30,7 @@ async function submitEvmTransaction(txInfo) {
   const networkConfig = getNetworkConfig(blockchain, networkName);
 
   if (!networkConfig) {
-    throw Object.assign(
-      new Error(`Unknown network: ${blockchain}/${networkName}`),
-      { status: 400 },
-    );
+    throw standardError(400, `Unknown network: ${blockchain}/${networkName}`);
   }
 
   // Get RPC endpoint from config or environment
@@ -41,11 +38,9 @@ async function submitEvmTransaction(txInfo) {
     networkConfig.rpc || process.env[`${blockchain.toUpperCase()}_RPC_URL`];
 
   if (!rpcUrl) {
-    throw Object.assign(
-      new Error(
-        `No RPC endpoint configured for ${blockchain}/${networkName}. Set ${blockchain.toUpperCase()}_RPC_URL environment variable.`,
-      ),
-      { status: 501 },
+    throw standardError(
+      501,
+      `No RPC endpoint configured for ${blockchain}/${networkName}. Set ${blockchain.toUpperCase()}_RPC_URL environment variable.`,
     );
   }
 

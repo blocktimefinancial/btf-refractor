@@ -1,6 +1,6 @@
 const { Horizon, TransactionBuilder } = require("@stellar/stellar-sdk"),
   EnhancedQueue = require("../queue/enhanced-queue"),
-  { resolveNetwork } = require("../network-resolver");
+  { resolveNetwork, normalizeNetworkName } = require("../network-resolver");
 const config = require("../../app.config");
 const logger = require("../../utils/logger").forComponent("horizon");
 const { getBreaker } = require("../../utils/circuit-breaker");
@@ -15,7 +15,7 @@ const horizonBreaker = getBreaker("horizon");
  * @return {Promise}
  */
 let submitTransactionWorker = function (txInfo) {
-  const normalizedKey = String(txInfo.network);
+  const normalizedKey = normalizeNetworkName(txInfo.network);
   let horizon = servers[normalizedKey];
   const network = resolveNetwork(txInfo.network);
   if (!horizon) {

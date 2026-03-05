@@ -22,8 +22,8 @@ const router = express.Router();
 const getLogger = (req) => {
   const reqLogger = getRequestLogger(req);
   // Add component context to request logger
-  return reqLogger.child
-    ? reqLogger.child({ component: "monitoring" })
+  return reqLogger.forComponent
+    ? reqLogger.forComponent("monitoring")
     : logger;
 };
 

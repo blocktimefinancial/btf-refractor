@@ -71,6 +71,8 @@
 
   // Track if we're already shutting down to prevent multiple calls
   let isShuttingDown = false;
+  // Declare server early so gracefulExit can reference it safely
+  let server;
 
   /**
    * Gracefully shutdown the server and finalize running tasks
@@ -114,7 +116,7 @@
 
       // Stop the finalizer queue (allow in-flight tasks to complete)
       logger.info("Stopping finalizer queue");
-      finalizer.stop();
+      await finalizer.stop();
 
       // Close database connections
       const storageLayer = require("./storage/storage-layer");
@@ -188,7 +190,7 @@
   const serverPort = parseInt(process.env.PORT || port || "3000");
   app.set("port", serverPort);
 
-  const server = http.createServer(app);
+  server = http.createServer(app);
 
   server.on("listening", () =>
     logger.info("Refractor API server started", {

@@ -61,7 +61,7 @@ class EnhancedQueue extends EventEmitter {
       const taskId =
         task.hash ||
         task.id ||
-        `task_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        `task_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
 
       let attempt = 0;
       let lastError;

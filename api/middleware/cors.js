@@ -8,7 +8,7 @@
  */
 
 const cors = require("cors");
-const logger = require("../utils/logger").child({ component: "cors" });
+const logger = require("../utils/logger").forComponent("cors");
 
 // Load blacklist from environment or config
 function loadBlacklist() {

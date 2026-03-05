@@ -39,7 +39,7 @@ class Signer {
   /** @type {Buffer} */
   hashRaw;
   /** @type {'draft'|'created'|'updated'|'unchanged'} */
-  status = "draft";
+  status;
   /** @type {Object} */
   txInfo;
   /** @type {Array} */

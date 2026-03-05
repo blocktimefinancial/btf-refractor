@@ -1,9 +1,10 @@
 // Edit : LJM - Added fallback to Horizon if coredb is not configured.
-// TODO: Use Staller Composable Data Platform to query the accounts.  Assigned to Tillman
+// TODO: Use Stellar Composable Data Platform to query the accounts.  Assigned to Tillman
 const { Pool } = require("pg"),
   { parse: parseConnectionString } = require("pg-connection-string"),
   { Horizon, StrKey } = require("@stellar/stellar-sdk"),
-  { networks } = require("../app.config");
+  { networks } = require("../app.config"),
+  logger = require("../utils/logger").forComponent("core-db");
 
 const pools = {};
 
@@ -42,7 +43,7 @@ async function loadAccountsInfo(network, accounts) {
 
   // Check if we're using Horizon instead of PostgreSQL
   if (pool instanceof Horizon.Server) {
-    console.log(
+    logger.info(
       `Using Horizon fallback for account info (network: ${network})`
     );
     // For each account in the accounts array, call Horizon to get the account details
@@ -56,9 +57,8 @@ async function loadAccountsInfo(network, accounts) {
           thresholds: accountData.thresholds,
         };
       } catch (error) {
-        console.warn(
-          `Failed to load account ${account} from Horizon:`,
-          error.message
+        logger.warn(
+          `Failed to load account ${account} from Horizon: ${error.message}`
         );
         return null;
       }

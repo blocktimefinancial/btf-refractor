@@ -219,13 +219,9 @@ function validateEnvironment(options = {}) {
     });
 
     if (exitOnError) {
-      console.error("\n❌ FATAL: Missing required environment variables:\n");
-      result.errors.forEach((err) => {
-        console.error(`   - ${err.variable}: ${err.message}`);
-      });
-      console.error(
-        "\nPlease set these variables and restart the application.\n",
-      );
+      // Dual-log: structured logger (already done above) + console for terminal visibility
+      const msg = result.errors.map((e) => `   - ${e.variable}: ${e.message}`).join("\n");
+      console.error(`\n❌ FATAL: Missing required environment variables:\n\n${msg}\n\nPlease set these variables and restart the application.\n`);
       process.exit(1);
     }
   }

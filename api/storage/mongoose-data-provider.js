@@ -137,7 +137,7 @@ class MongooseDataProvider extends DataProvider {
 
       return transaction;
     } catch (error) {
-      console.error("Error finding transaction:", error);
+      logger.error("Error finding transaction", { hash, error: error.message });
       throw error;
     }
   }

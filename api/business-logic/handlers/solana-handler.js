@@ -428,17 +428,20 @@ class SolanaHandler extends BlockchainHandler {
       // Resolve public key bytes
       let pubKeyBytes;
       if (typeof publicKey === "string") {
-        if (publicKey.length === 64) {
+        if (
+          publicKey.length === 64 &&
+          /^[0-9a-fA-F]+$/.test(publicKey)
+        ) {
           // Hex-encoded 32-byte public key
           pubKeyBytes = Buffer.from(publicKey, "hex");
         } else if (
           publicKey.length === 44 &&
-          /^[A-Za-z0-9+/=]+$/.test(publicKey)
+          /[+/=]/.test(publicKey)
         ) {
-          // Base64-encoded 32-byte public key
+          // Base64-encoded 32-byte public key (must contain base64-specific chars)
           pubKeyBytes = Buffer.from(publicKey, "base64");
         } else {
-          // Base58-encoded address (most common for Solana)
+          // Base58-encoded address (default for Solana)
           pubKeyBytes = this._base58Decode(publicKey);
         }
       } else if (Buffer.isBuffer(publicKey)) {

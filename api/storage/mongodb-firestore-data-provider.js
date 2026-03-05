@@ -25,7 +25,8 @@ class MongodbFirestoreDataProvider extends MongodbDataProvider {
       credentials: firestore,
       ignoreUndefinedProperties: true,
     });
-    console.log(`Connected to Firestore data source ${firestore.project_id}`);
+    const logger = require("../utils/logger").forComponent("firestore-provider");
+    logger.info(`Connected to Firestore data source ${firestore.project_id}`);
   }
 
   /**
